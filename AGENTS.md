@@ -42,3 +42,4 @@ Spot Rules: users pin outdoor spots and describe a good day in plain English. Th
 - Replay: `set-replay-date` freezes "today" on cached real weather for demos.
 - Daily summary: `morning-check`. To schedule it, create an automation with `manage-automations` (e.g. cron `0 6 * * *`, instructions "Run morning-check").
 - Rule schema, examples and pitfalls: `.agents/skills/spot-rules/SKILL.md`.
+- Write numbers and units as plain text (e.g. "gusts under 35 km/h"). Never use LaTeX or `$...$` math in replies.

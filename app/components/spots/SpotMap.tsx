@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { Map as MlMap, Marker } from "maplibre-gl";
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 
 export type MapSpot = {
   id: string;
@@ -47,6 +48,8 @@ export function SpotMap({
     ready.current = import("maplibre-gl").then((m) => {
       if (cancelled || !box.current) return;
       lib.current = m;
+      // Production builds do not ship the worker next to the bundle; point at the copied asset.
+      m.setWorkerUrl(workerUrl);
       const instance = new m.Map({
         container: box.current,
         style: STYLE_URL,
