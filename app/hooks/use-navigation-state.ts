@@ -18,13 +18,17 @@ export interface NavigationState {
   path?: string;
   publicPath?: string;
   threadId?: string;
+  spotId?: string;
+  day?: string;
+  tab?: string;
 }
 
 export function useNavigationState() {
   useAgentRouteState<NavigationState>({
     browserTabId: TAB_ID,
     requestSource: TAB_ID,
-    getNavigationState: ({ pathname }) => navigationStateForPath(pathname),
+    getNavigationState: ({ pathname, search }: { pathname: string; search?: string }) =>
+      navigationStateForPath(pathname, search),
     getCommandPath: commandPathForNavigation,
   });
 }
@@ -62,19 +66,30 @@ function matchesPathPrefix(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
-export function navigationStateForPath(pathname: string): NavigationState {
+export function navigationStateForPath(
+  pathname: string,
+  search?: string,
+): NavigationState {
   const threadId = threadIdFromPath(pathname);
+  const spotMatch = pathname.match(/^\/spots\/([^/]+)/);
+  const params = new URLSearchParams(search ?? "");
+  const day = params.get("day");
+  const tab = params.get("tab");
   return {
     view: viewForPath(pathname),
     path: pathname,
     publicPath: appPathFromLocalRoute(pathname),
     ...(threadId ? { threadId } : {}),
+    ...(spotMatch ? { spotId: decodeURIComponent(spotMatch[1] ?? "") } : {}),
+    ...(spotMatch && tab ? { tab } : {}),
+    ...(spotMatch && day ? { day } : {}),
   };
 }
 
 function viewForPath(pathname: string): string {
   if (isChatPathname(pathname)) return "chat";
   if (pathname === HOME_PATH) return "home";
+  if (pathname.startsWith("/spots")) return "spots";
   if (pathname.startsWith("/database")) return "database";
   if (pathname.startsWith("/extensions")) return "extensions";
   if (pathname.startsWith("/observability")) return "observability";
@@ -93,6 +108,8 @@ function pathForView(view?: string): string {
       return NEW_CHAT_PATH;
     case "home":
       return HOME_PATH;
+    case "spots":
+      return "/spots";
     case "database":
       return "/database";
     case "extensions":
@@ -112,6 +129,15 @@ function pathForView(view?: string): string {
 
 export function pathForCommand(command: any): string {
   const path = pathForView(command?.view);
+  if (command?.view === "spots") {
+    const spotId = typeof command?.spotId === "string" ? command.spotId.trim() : "";
+    if (!spotId) return path;
+    const q = new URLSearchParams();
+    if (typeof command?.tab === "string") q.set("tab", command.tab);
+    if (typeof command?.day === "string") q.set("day", command.day);
+    const qs = q.toString();
+    return `/spots/${encodeURIComponent(spotId)}${qs ? `?${qs}` : ""}`;
+  }
   if (command?.view !== "chat" && command?.view !== "ask") return path;
   const threadId =
     typeof command?.threadId === "string" ? command.threadId.trim() : "";

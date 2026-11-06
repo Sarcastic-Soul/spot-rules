@@ -31,3 +31,14 @@ Use `adding-a-feature` for functional parity and `frontend-design` for a user-fa
 Before building common workspace or agent UI, read `agent-native-toolkit`; for supported customization, read `customizing-agent-native`.
 
 - Guarded verification: run `pnpm agent-native:doctor`; fix findings before done.
+
+## Spot Rules (this app)
+
+Spot Rules: users pin outdoor spots and describe a good day in plain English. The agent writes typed rule drafts; `shared/evaluate.ts` (plain code) decides GO / MAYBE / NO from Open-Meteo weather. Never decide or guess a verdict; read it from `get-spot` or `backtest-rule`.
+
+- Screens: `/spots` (list + map), `/spots/:id?tab=next|past|history&day=YYYY-MM-DD`. Navigation state carries `view: "spots"`, `spotId`, `tab`, `day`.
+- Rule changes always go through `propose-rule` (saves a draft and returns its effect). Users approve in the UI; call `decide-rule-draft` only when the user clearly says approve.
+- Wrong call: `give-feedback` (UI usually did this and passes `feedbackId`), then `propose-rule` with the smallest change plus `feedbackId`. Report changed days from the preview.
+- Replay: `set-replay-date` freezes "today" on cached real weather for demos.
+- Daily summary: `morning-check`. To schedule it, create an automation with `manage-automations` (e.g. cron `0 6 * * *`, instructions "Run morning-check").
+- Rule schema, examples and pitfalls: `.agents/skills/spot-rules/SKILL.md`.

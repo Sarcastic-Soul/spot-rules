@@ -1,5 +1,5 @@
 const rawAppName = "agent-native-app";
-const rawAppTitle = "Agent Native App";
+const rawAppTitle = "Spot Rules";
 
 const APP_NAME_PLACEHOLDER = "{" + "{APP_NAME}}";
 const APP_TITLE_PLACEHOLDER = "{" + "{APP_TITLE}}";

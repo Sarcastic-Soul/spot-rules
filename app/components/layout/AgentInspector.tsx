@@ -37,12 +37,12 @@ export function AgentInspector({
       browserTabId={TAB_ID}
       openOnChatRunning={chatHomeHandoffActive}
       onFullscreenRequest={openAskAgentFullscreen}
-      emptyStateText={t("chat.inspectEmptyState")}
+      emptyStateText="Tell me what a good day looks like at a spot, or which call was wrong."
       agentPageHref="/settings/agent"
       suggestions={[
-        t("chat.inspectSuggestionCapabilities"),
-        t("chat.inspectSuggestionHello"),
-        t("chat.inspectSuggestionAction"),
+        "Where should I ride this Saturday?",
+        "Why is tomorrow a NO here?",
+        "Gusts matter more than average wind for me",
       ]}
     >
       {children}

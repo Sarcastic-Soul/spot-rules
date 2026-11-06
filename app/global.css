@@ -1,4 +1,9 @@
 @import "@fontsource-variable/inter";
+@import "@fontsource-variable/fraunces";
+@import "@fontsource-variable/manrope";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "maplibre-gl/dist/maplibre-gl.css";
 
 @import "tailwindcss";
 @import "@agent-native/toolkit/styles.css";
@@ -6,34 +11,38 @@
 @source "./**/*.{ts,tsx}";
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 0 0% 10%;
-  --card: 0 0% 100%;
-  --card-foreground: 0 0% 10%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 10%;
-  --primary: 0 0% 15%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 0 0% 95%;
-  --secondary-foreground: 0 0% 15%;
-  --muted: 0 0% 95%;
-  --muted-foreground: 0 0% 43%;
-  --accent: 0 0% 95%;
-  --accent-foreground: 0 0% 15%;
+  --signal: 16 71% 41%;
+  --font-display: "Fraunces Variable", Georgia, serif;
+  --font-body: "Manrope Variable", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --background: 40 38% 93%;
+  --foreground: 33 20% 11%;
+  --card: 40 40% 95%;
+  --card-foreground: 33 20% 11%;
+  --popover: 40 40% 96%;
+  --popover-foreground: 33 20% 11%;
+  --primary: 33 20% 11%;
+  --primary-foreground: 40 38% 94%;
+  --secondary: 39 30% 87%;
+  --secondary-foreground: 33 20% 11%;
+  --muted: 39 30% 88%;
+  --muted-foreground: 35 13% 36%;
+  --accent: 39 30% 87%;
+  --accent-foreground: 33 20% 11%;
   --destructive: 0 91% 71%;
   --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 90%;
-  --input: 0 0% 90%;
-  --ring: 0 0% 40%;
-  --radius: 0.5rem;
-  --sidebar-background: 0 0% 97%;
-  --sidebar-foreground: 0 0% 43%;
-  --sidebar-primary: 0 0% 15%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 0 0% 95%;
-  --sidebar-accent-foreground: 0 0% 15%;
-  --sidebar-border: 0 0% 90%;
-  --sidebar-ring: 0 0% 40%;
+  --border: 39 25% 78%;
+  --input: 39 25% 72%;
+  --ring: 16 71% 41%;
+  --radius: 0.125rem;
+  --sidebar-background: 39 32% 89%;
+  --sidebar-foreground: 35 13% 36%;
+  --sidebar-primary: 33 20% 11%;
+  --sidebar-primary-foreground: 40 38% 94%;
+  --sidebar-accent: 39 30% 84%;
+  --sidebar-accent-foreground: 33 20% 11%;
+  --sidebar-border: 39 25% 78%;
+  --sidebar-ring: 16 71% 41%;
   --chat-sidebar-width: 17.5rem;
   --chat-sidebar-content-inset: 0.5rem;
   --chat-sidebar-row-padding: 0.75rem;
@@ -229,41 +238,41 @@
 }
 
 .dark {
-  --background: 0 0% 13%;
-  --foreground: 0 0% 90%;
-  --card: 0 0% 16.47%;
-  --card-foreground: 0 0% 90%;
-  --popover: 0 0% 15%;
-  --popover-foreground: 0 0% 90%;
-  --primary: 0 0% 75%;
-  --primary-foreground: 0 0% 10%;
-  --secondary: 0 0% 18%;
-  --secondary-foreground: 0 0% 90%;
-  --muted: 0 0% 16%;
-  --muted-foreground: 0 0% 60%;
-  --accent: 0 0% 18%;
-  --accent-foreground: 0 0% 90%;
+  --signal: 18 70% 55%;
+  --background: 30 12% 10%;
+  --foreground: 38 25% 88%;
+  --card: 30 12% 13%;
+  --card-foreground: 38 25% 88%;
+  --popover: 30 12% 12%;
+  --popover-foreground: 38 25% 88%;
+  --primary: 38 25% 88%;
+  --primary-foreground: 30 12% 10%;
+  --secondary: 30 10% 17%;
+  --secondary-foreground: 38 25% 88%;
+  --muted: 30 10% 16%;
+  --muted-foreground: 35 12% 62%;
+  --accent: 30 10% 18%;
+  --accent-foreground: 38 25% 88%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 24%;
-  --input: 0 0% 24%;
-  --ring: 0 0% 60%;
-  --radius: 0.5rem;
-  --sidebar-background: 0 0% 10%;
-  --sidebar-foreground: 0 0% 60%;
-  --sidebar-primary: 0 0% 75%;
-  --sidebar-primary-foreground: 0 0% 10%;
-  --sidebar-accent: 0 0% 16%;
-  --sidebar-accent-foreground: 0 0% 90%;
-  --sidebar-border: 0 0% 20%;
-  --sidebar-ring: 0 0% 60%;
+  --border: 30 10% 24%;
+  --input: 30 10% 26%;
+  --ring: 18 70% 55%;
+  --radius: 0.125rem;
+  --sidebar-background: 30 12% 8%;
+  --sidebar-foreground: 35 12% 62%;
+  --sidebar-primary: 38 25% 88%;
+  --sidebar-primary-foreground: 30 12% 10%;
+  --sidebar-accent: 30 10% 16%;
+  --sidebar-accent-foreground: 38 25% 88%;
+  --sidebar-border: 30 10% 20%;
+  --sidebar-ring: 18 70% 55%;
 }
 
 @layer base {
   body {
     @apply bg-background text-foreground;
-    font-family: "Inter Variable", "Inter", sans-serif;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-family: var(--font-body);
   }
 }
 
@@ -281,3 +290,27 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.34);
 }
+
+/* ---- Spot Rules ---- */
+.font-display { font-family: var(--font-display); font-optical-sizing: auto; }
+.font-plex { font-family: var(--font-mono); }
+.text-signal { color: hsl(var(--signal)); }
+.bg-signal { background: hsl(var(--signal)); }
+.border-signal { border-color: hsl(var(--signal)); }
+.verdict-GO { color: hsl(var(--signal)); font-weight: 800; }
+.verdict-NO { color: hsl(var(--muted-foreground)); font-weight: 600; text-decoration: line-through; text-decoration-thickness: 2px; }
+.verdict-MAYBE { font-style: italic; font-weight: 400; }
+.verdict-SKIP, .verdict-UNKNOWN { color: hsl(var(--muted-foreground)); font-weight: 400; }
+.cell-GO { background: hsl(var(--signal)); color: hsl(var(--primary-foreground)); }
+.cell-MAYBE { background: repeating-linear-gradient(135deg, transparent 0 4px, hsl(var(--signal) / 0.35) 4px 7px); }
+.cell-NO { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+.cell-SKIP, .cell-UNKNOWN { background: transparent; color: hsl(var(--muted-foreground)); }
+.spot-map .maplibregl-canvas { filter: sepia(0.32) saturate(0.75) brightness(1.01); }
+.dark .spot-map .maplibregl-canvas { filter: invert(0.9) hue-rotate(180deg) sepia(0.25) saturate(0.6); }
+.spot-marker { font: 500 12px var(--font-body); white-space: nowrap; cursor: pointer; padding: 3px 8px; border: 1px solid hsl(var(--foreground)); background: hsl(var(--card)); color: hsl(var(--foreground)); transform: translateY(-4px); }
+.spot-marker b { font-weight: 700; }
+.spot-marker[data-selected="true"] { background: hsl(var(--foreground)); color: hsl(var(--background)); }
+.spot-marker[data-selected="true"] b.go { color: hsl(var(--signal) / 1); filter: brightness(1.5); }
+.spot-marker b.go { color: hsl(var(--signal)); }
+.spot-pending-pin { width: 16px; height: 16px; border-radius: 50%; background: hsl(var(--signal)); border: 2px solid hsl(var(--foreground)); }
+@media (prefers-reduced-motion: reduce) { .spot-anim { transition: none !important; animation: none !important; } }
