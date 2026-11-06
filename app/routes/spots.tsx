@@ -34,15 +34,16 @@ export default function SpotsLayout() {
   const [pendingPin, setPendingPin] = useState<Pin | null>(null);
   const list = useActionQuery<ListResult>("list-spots", {});
   const replayDate = list.data?.replayDate ?? null;
-  const today = list.data?.spots[0]?.today;
+  // Spots carry their own local "today"; with no spots, fall back to replay date or the browser's date.
+  const today = list.data ? (list.data.spots[0]?.today ?? replayDate ?? localIsoDate()) : undefined;
 
   const setReplay = useActionMutation("set-replay-date", {
     onError: (e: Error) => toast.error(e.message),
   });
-  const morning = useActionMutation<{ title?: string; lines: string[]; note?: string }>("morning-check", {
+  const morning = useActionMutation<{ title?: string; lines: { text: string }[]; note?: string }>("morning-check", {
     onSuccess: (r) =>
       toast(r.title ?? "Morning check", {
-        description: r.lines.length ? r.lines.join("\n") : r.note,
+        description: r.lines.length ? r.lines.map((l) => l.text).join("\n") : r.note,
         duration: 12000,
         action: {
           label: "Run daily",
@@ -151,4 +152,9 @@ function isoDaysAgo(n: number) {
   const d = new Date();
   d.setDate(d.getDate() - n);
   return d.toISOString().slice(0, 10);
+}
+
+function localIsoDate() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }

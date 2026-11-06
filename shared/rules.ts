@@ -80,7 +80,9 @@ export const conditionSchema = z.object({
     .string()
     .optional()
     .describe("The user's own words this condition came from"),
-}).superRefine((c, ctx) => {
+}).describe(
+  "A test a GOOD day must pass (passes when true). Write the bad case the other way round: 'if cloud is over 80% call it maybe' = cloud_cover <= 80 soft; 'not above 32' = <= 32.",
+).superRefine((c, ctx) => {
   const isRange = Array.isArray(c.value);
   if (c.op === "between" && !isRange)
     ctx.addIssue({ code: "custom", message: "op 'between' needs value [min, max]" });
@@ -100,7 +102,9 @@ export const windowSchema = z
       .int()
       .min(1)
       .max(24)
-      .describe("Latest end, local hour 1-24 (exclusive)"),
+      .describe(
+        "Hour the activity must be finished by, local 1-24 (exclusive). 'Start between 6 and 10, 4 hours' = endHour 14",
+      ),
     minHours: z
       .number()
       .int()

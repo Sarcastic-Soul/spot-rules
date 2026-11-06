@@ -52,6 +52,16 @@ description: >-
 - "Since 6 pm the day before" with a 5 am start = lookback 11 hours. Work out
   the hours from the window start.
 
+## Pitfalls (check every draft)
+
+- A condition is what a GOOD day needs; it passes when true. Write the bad case
+  the other way round: "if cloud is over 80% call it maybe" = `cloud_cover <= 80`
+  soft, never `cloud_cover > 80`. "Not above 32" = `<= 32`.
+- `endHour` is when the activity must be finished, not the latest start.
+  "Start between 6 and 10 am, 4 hours" = `startHour 6, endHour 14, minHours 4`.
+  "Between 6 and 10 am for 2 hours" (no "start") = `startHour 6, endHour 10`.
+- "Weekends" = `days: [0, 6]`.
+
 ## Fixing a wrong call
 
 1. The UI sends the user's message with `feedbackId` and `spotId` in context.

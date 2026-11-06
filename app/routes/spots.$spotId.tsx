@@ -354,31 +354,39 @@ function askAgent(message: string, context: string) {
   sendToAgentChat({ message, context, submit: true });
 }
 
-function ChangeInWords({ d }: { d: SpotDetail }) {
+function ChangeInWords({ d, draftId, autoFocus }: { d: SpotDetail; draftId?: string; autoFocus?: boolean }) {
   const [text, setText] = useState("");
+  const id = draftId ? "change-draft" : "change-rule";
   return (
     <form
-      className="mt-3 flex gap-2"
+      className={draftId ? "flex gap-2 px-4 pb-4" : "mt-3 flex gap-2"}
       onSubmit={(e) => {
         e.preventDefault();
         if (text.trim().length < 3) return;
         askAgent(
-          `Change the rule for ${d.spot.name}: ${text.trim()}`,
-          `Spot Rules. spotId=${d.spot.id}. Active rule v${d.activeRule?.version}. Use propose-rule to save a draft with the smallest change; do not decide verdicts yourself.`,
+          draftId
+            ? `Change this draft for ${d.spot.name}: ${text.trim()}`
+            : `Change the rule for ${d.spot.name}: ${text.trim()}`,
+          draftId
+            ? `Spot Rules. spotId=${d.spot.id}. draftId=${draftId}. Revise the draft with propose-rule; keep everything the user did not mention.`
+            : `Spot Rules. spotId=${d.spot.id}. Active rule v${d.activeRule?.version}. Use propose-rule to save a draft with the smallest change; do not decide verdicts yourself.`,
         );
         setText("");
       }}
     >
-      <label htmlFor="change-rule" className="sr-only">Change the rule in your own words</label>
+      <label htmlFor={id} className="sr-only">
+        {draftId ? "Say what to change in this draft" : "Change the rule in your own words"}
+      </label>
       <input
-        id="change-rule"
+        id={id}
         className={field}
         value={text}
+        autoFocus={autoFocus}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Change it in words, e.g. “gusts matter more than wind”"
+        placeholder={draftId ? "What should change? e.g. “I can start as late as 10”" : "Change it in words, e.g. “gusts matter more than wind”"}
       />
       <button type="submit" className={btn.line} disabled={text.trim().length < 3}>
-        <ChatCircleText size={16} /> Ask
+        <ChatCircleText size={16} /> {draftId ? "Send" : "Ask"}
       </button>
     </form>
   );
@@ -447,6 +455,7 @@ function DraftCard({ d }: { d: SpotDetail }) {
   const diff = diffRules(d.activeRule?.body ?? null, draft.body);
   const eff = draft.effect;
   const isNew = !d.activeRule;
+  const [tweaking, setTweaking] = useState(false);
   return (
     <section className="mx-5 mt-5 border-2 border-signal bg-card" aria-label="Rule draft waiting for you">
       <div className="flex items-center gap-2 border-b border-border px-4 py-2">
@@ -530,16 +539,13 @@ function DraftCard({ d }: { d: SpotDetail }) {
         <button
           type="button"
           className={`${btn.ghost} ml-auto`}
-          onClick={() =>
-            askAgent(
-              "Not quite. Let me explain what to change in this draft.",
-              `Spot Rules. spotId=${d.spot.id}. draftId=${draft.id}. Revise with propose-rule.`,
-            )
-          }
+          aria-expanded={tweaking}
+          onClick={() => setTweaking((v) => !v)}
         >
           <ChatCircleText size={15} /> Tweak with agent
         </button>
       </div>
+      {tweaking && <ChangeInWords d={d} draftId={draft.id} autoFocus />}
     </section>
   );
 }
@@ -806,7 +812,13 @@ function History({ d }: { d: SpotDetail }) {
             <p className="flex flex-wrap items-center gap-x-2 text-[13px]">
               {h.createdBy === "agent" ? <Robot size={14} aria-hidden /> : <User size={14} aria-hidden />}
               <span className="font-medium">
-                {h.createdBy === "agent" ? (h.status === "rejected" ? "Agent proposed · you rejected" : "Agent proposed · you approved") : "You edited"}
+                {h.createdBy !== "agent"
+                  ? "You edited"
+                  : h.status !== "rejected"
+                    ? "Agent proposed · you approved"
+                    : h.reason === "Replaced by a newer draft"
+                      ? "Agent proposed · replaced by a newer draft"
+                      : "Agent proposed · you rejected"}
               </span>
               <span className="font-plex text-[11px] text-muted-foreground">{new Date(h.decidedAt ?? h.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</span>
               {h.status === "active" && <span className="bg-foreground px-1.5 font-plex text-[10px] text-background">LIVE</span>}

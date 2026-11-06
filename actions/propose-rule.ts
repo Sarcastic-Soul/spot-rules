@@ -20,7 +20,7 @@ import {
 
 export default defineAction({
   description:
-    "Save a DRAFT rule for a spot, written from the user's plain-English words (first rule, or a change after feedback). Nothing goes live until the user approves it with decide-rule-draft. Replaces any earlier draft. Returns how the draft would change the next 7 days and the past 30 days.",
+    "Save a DRAFT rule for a spot, written from the user's plain-English words (first rule, or a change after feedback). Nothing goes live until the user approves it with decide-rule-draft. Replaces any earlier draft. Returns how the draft would change the next 7 days and the past 30 days. Each condition is a test a good day must pass: 'over 80% cloud is a maybe' becomes cloud_cover <= 80 soft, never > 80.",
   schema: z.object({
     spotId: z.string().describe("Spot id"),
     sourceText: z
