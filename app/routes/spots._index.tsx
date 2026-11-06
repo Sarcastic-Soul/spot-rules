@@ -14,6 +14,8 @@ type ListResult = {
     id: string;
     name: string;
     activity: string;
+    lat: number;
+    lon: number;
     ruleVersion: number | null;
     week: { date: string; result: string; reason: string }[] | null;
   }[];
@@ -117,9 +119,12 @@ function AddSpotForm({ onClose }: { onClose: () => void }) {
   const [activity, setActivity] = useState("");
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
+  // Rank results near the user's spots (or the default map view) so "Nandi Hills" finds the one in India first.
+  const spots = useActionQuery<ListResult>("list-spots", {});
+  const anchor = spots.data?.spots[0] ?? { lat: 13.1, lon: 77.5 };
   const places = useActionQuery<Place[] | { places: Place[] }>(
     "search-places",
-    { query: submittedQuery },
+    { query: submittedQuery, nearLat: anchor.lat, nearLon: anchor.lon },
     { enabled: submittedQuery.length >= 2 },
   );
   const placeList: Place[] = Array.isArray(places.data) ? places.data : (places.data?.places ?? []);

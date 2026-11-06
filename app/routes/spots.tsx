@@ -43,7 +43,15 @@ export default function SpotsLayout() {
   const morning = useActionMutation<{ title?: string; lines: { text: string }[]; note?: string }>("morning-check", {
     onSuccess: (r) =>
       toast(r.title ?? "Morning check", {
-        description: r.lines.length ? r.lines.map((l) => l.text).join("\n") : r.note,
+        description: r.lines.length ? (
+          <ul className="mt-1 space-y-1">
+            {r.lines.map((l, i) => (
+              <li key={i}>{l.text}</li>
+            ))}
+          </ul>
+        ) : (
+          r.note
+        ),
         duration: 12000,
         action: {
           label: "Run daily",

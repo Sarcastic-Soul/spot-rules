@@ -102,7 +102,7 @@ export type Place = {
 
 export async function searchPlaces(
   query: string,
-  opts: { count?: number; fetchImpl?: typeof fetch } = {},
+  opts: { count?: number; fetchImpl?: typeof fetch; near?: { lat: number; lon: number } } = {},
 ): Promise<Place[]> {
   const q = query.trim();
   if (!q) return [];
@@ -116,7 +116,7 @@ export async function searchPlaces(
   });
   const data = await getJson(`${GEOCODING_URL}?${params}`, fetchImpl, "Open-Meteo geocoding");
   const results: any[] = Array.isArray(data?.results) ? data.results : [];
-  return results
+  const places = results
     .filter((r) => typeof r.latitude === "number" && typeof r.longitude === "number")
     .map((r) => {
       const p: Place = { name: String(r.name), lat: r.latitude, lon: r.longitude };
@@ -125,4 +125,12 @@ export async function searchPlaces(
       if (r.timezone) p.timezone = String(r.timezone);
       return p;
     });
+  const near = opts.near;
+  // Same-name places exist worldwide (Nandi Hills is in India and Kenya); put the closest first.
+  return near ? places.sort((a, b) => roughKm(a, near) - roughKm(b, near)) : places;
+}
+
+function roughKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
+  const x = (a.lon - b.lon) * Math.cos(((a.lat + b.lat) / 2) * (Math.PI / 180));
+  return Math.hypot(x, a.lat - b.lat) * 111;
 }
