@@ -3,6 +3,7 @@ import { buildDeepLink } from "@agent-native/core/server";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { feedbackCheck } from "../shared/feedback-check.js";
 import { getDb, schema } from "../server/db/index.js";
 import {
   backtestVerdicts,
@@ -68,6 +69,7 @@ export default defineAction({
         forecastChanges: forecast ? changedDays(forecast, draftForecast) : [],
         backtestChanges: activePast ? changedDays(activePast, draftPast) : [],
         backtestCounts: countResults(draftPast),
+        feedbackCheck: feedbackCheck(draft.body, active?.body ?? null, weather.hourly, openFeedback),
       };
     }
     return {

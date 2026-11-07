@@ -3,6 +3,7 @@ import { buildDeepLink } from "@agent-native/core/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { feedbackCheck } from "../shared/feedback-check.js";
 import { ruleBodySchema } from "../shared/rules.js";
 import { getDb, schema } from "../server/db/index.js";
 import {
@@ -14,6 +15,7 @@ import {
   getOwnedSpot,
   getReplayDate,
   getRuleByStatus,
+  listFeedbackDays,
   loadWeather,
   requireEmail,
 } from "../server/lib/spots.js";
@@ -77,9 +79,10 @@ export default defineAction({
 
     // Effect preview, computed by code so the user can judge the change.
     const replayDate = await getReplayDate(ownerEmail);
-    const [weather, active] = await Promise.all([
+    const [weather, active, feedbackDays] = await Promise.all([
       loadWeather(spot, { replay: Boolean(replayDate) }).catch(() => null),
       getRuleByStatus(spot.id, "active"),
+      listFeedbackDays(spot.id, ownerEmail),
     ]);
     if (!weather) return { draftId: id, status: "draft", preview: null, note: "Weather unavailable; preview skipped." };
     const today = effectiveToday(weather.timezone, replayDate);
@@ -95,6 +98,7 @@ export default defineAction({
         next7Changes: activeNext ? changedDays(activeNext, draftNext) : [],
         past30Counts: countResults(draftPast),
         past30Changes: activePast ? changedDays(activePast, draftPast) : [],
+        feedbackCheck: feedbackCheck(args.body, active?.body ?? null, weather.hourly, feedbackDays),
       },
       next: "Tell the user the draft is waiting in the panel, summarise the change and its effect, and let them approve or reject it.",
     };

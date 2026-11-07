@@ -240,8 +240,13 @@ change".
   production builds, and place search ranked by distance.
 - Added `shared/rules.test.ts` (rule schema checks). Removed the template
   `hello` action.
-- Not built: S1 compare spots, S2 activity templates, S3 sunrise windows,
-  S4 share a rule.
+- After a four-judge review: starter rule templates per activity (S2, no model
+  needed), `compare-spots` action for the agent (S1, no screen yet), a
+  feedback check on every draft (which old notes it fixes, keeps or breaks),
+  rule history with diffs and the note behind each version, weather cache
+  widened to 70 past days so replay and backtest no longer go blank, and a real
+  `view-screen`.
+- Not built: S3 sunrise windows, S4 share a rule.
 
 ## 12. Pre-existing work used
 

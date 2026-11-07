@@ -1,13 +1,13 @@
 import { sendToAgentChat } from "@agent-native/core/client/agent-chat";
-import { useActionMutation, useActionQuery } from "@agent-native/core/client/hooks";
-import { ArrowsClockwise, ClockCounterClockwise, SunHorizon } from "@phosphor-icons/react";
+import { callAction, useActionMutation, useActionQuery } from "@agent-native/core/client/hooks";
+import { ArrowsClockwise, CalendarCheck, ClockCounterClockwise, SunHorizon } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { Outlet, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 
 import { SpotMap } from "@/components/spots/SpotMap";
 import { btn, type Pin, type SpotsOutletContext } from "@/components/spots/context";
-import { longDate } from "@/lib/spots";
+import { dayLabel, longDate, type DayVerdict } from "@/lib/spots";
 
 export function meta() {
   return [{ title: "Spot Rules" }];
@@ -40,9 +40,43 @@ export default function SpotsLayout() {
   const setReplay = useActionMutation("set-replay-date", {
     onError: (e: Error) => toast.error(e.message),
   });
-  const morning = useActionMutation<{ title?: string; lines: { text: string }[]; note?: string }>("morning-check", {
-    onSuccess: (r) =>
-      toast(r.title ?? "Morning check", {
+  const [findingGo, setFindingGo] = useState(false);
+  const ruleSpot = list.data?.spots.find((s) => s.ruleVersion !== null);
+
+  async function jumpToGoDay() {
+    if (!ruleSpot) return;
+    setFindingGo(true);
+    try {
+      const bt = await callAction<{ active: { verdicts: DayVerdict[] } | null }>(
+        "backtest-rule",
+        { spotId: ruleSpot.id, days: 35 },
+        { method: "GET" },
+      );
+      const lo = isoDaysAgo(35);
+      const hi = isoDaysAgo(1);
+      const go = (bt.active?.verdicts ?? [])
+        .filter((v) => v.result === "GO" && v.date >= lo && v.date <= hi)
+        .map((v) => v.date)
+        .sort()
+        .pop();
+      if (!go) toast(`No GO day in the past 30 days for ${ruleSpot.name}`);
+      else await setReplay.mutateAsync({ date: go });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setFindingGo(false);
+    }
+  }
+
+  const morning = useActionMutation<{
+    title?: string;
+    lines: { text: string; todayOver?: boolean }[];
+    note?: string;
+    notified?: boolean;
+  }>("morning-check", {
+    onSuccess: (r) => {
+      const show = r.notified === false && r.lines.length ? toast.warning : toast;
+      show(r.notified === false && r.lines.length ? "Checked your spots, but the inbox post failed" : (r.title ?? "Morning check"), {
         description: r.lines.length ? (
           <ul className="mt-1 space-y-1">
             {r.lines.map((l, i) => (
@@ -63,7 +97,8 @@ export default function SpotsLayout() {
               submit: true,
             }),
         },
-      }),
+      });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -75,6 +110,13 @@ export default function SpotsLayout() {
         lat: s.lat,
         lon: s.lon,
         verdict: s.week?.[0]?.result ?? null,
+        nextGo:
+          s.week && s.week[0]?.result !== "GO"
+            ? (() => {
+                const n = s.week.find((d) => d.result === "GO");
+                return n ? dayLabel(n.date).split(" ")[0] : null;
+              })()
+            : null,
       })),
     [list.data],
   );
@@ -85,7 +127,7 @@ export default function SpotsLayout() {
   const maxReplay = isoDaysAgo(1);
 
   return (
-    <div className="grid h-full min-h-0 grid-rows-[42vh_1fr] bg-background text-foreground lg:grid-cols-[minmax(380px,460px)_1fr] lg:grid-rows-1">
+    <div className="grid h-full min-h-0 grid-rows-[28vh_1fr] bg-background text-foreground lg:grid-cols-[minmax(380px,460px)_1fr] lg:grid-rows-1">
       <section className="order-2 flex min-h-0 flex-col border-border lg:order-1 lg:border-r">
         <header className="flex items-baseline gap-3 border-b border-foreground px-5 pb-3 pt-4">
           <h1 className="font-display text-[26px] font-extrabold leading-none tracking-[-0.02em]">Spot Rules</h1>
@@ -110,6 +152,18 @@ export default function SpotsLayout() {
           {replayDate && (
             <button type="button" className={btn.ghost} onClick={() => setReplay.mutate({ date: null })}>
               Back to live
+            </button>
+          )}
+          {ruleSpot && (
+            <button
+              type="button"
+              className={btn.ghost}
+              disabled={findingGo || setReplay.isPending}
+              onClick={() => void jumpToGoDay()}
+              title="Replay the most recent past day the rule called GO"
+            >
+              {findingGo ? <ArrowsClockwise size={15} className="animate-spin motion-reduce:animate-none" /> : <CalendarCheck size={15} />}
+              Jump to a GO day
             </button>
           )}
           <button

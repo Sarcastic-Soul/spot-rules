@@ -8,7 +8,9 @@ export type MapSpot = {
   lat: number;
   lon: number;
   /** Today's verdict, if known */
-  verdict?: string | null;
+  verdict?: string | null | undefined;
+  /** Weekday of the next GO day when today is not GO, e.g. "Thu" */
+  nextGo?: string | null | undefined;
 };
 
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
@@ -86,15 +88,25 @@ export function SpotMap({
         el.type = "button";
         el.className = "spot-marker";
         el.dataset.selected = String(s.id === selectedId);
-        el.setAttribute("aria-label", `${s.name}${s.verdict ? `, today ${s.verdict}` : ""}`);
+        el.setAttribute(
+          "aria-label",
+          `${s.name}${s.verdict ? `, today ${s.verdict}` : ""}${s.nextGo ? `, next GO ${s.nextGo}` : ""}`,
+        );
+        if (s.verdict) {
+          const v = document.createElement("span");
+          v.className = `spot-marker__v cell-${s.verdict}`;
+          v.textContent = s.verdict === "UNKNOWN" ? "—" : s.verdict === "SKIP" ? "off" : s.verdict;
+          el.append(v);
+        }
         const name = document.createElement("span");
+        name.className = "spot-marker__name";
         name.textContent = s.name;
         el.append(name);
-        if (s.verdict) {
-          const b = document.createElement("b");
-          b.textContent = ` · ${s.verdict}`;
-          if (s.verdict === "GO") b.className = "go";
-          el.append(b);
+        if (s.nextGo) {
+          const n = document.createElement("span");
+          n.className = "spot-marker__next";
+          n.textContent = `next GO ${s.nextGo}`;
+          el.append(n);
         }
         el.addEventListener("click", (ev) => {
           ev.stopPropagation();

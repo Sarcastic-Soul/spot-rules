@@ -73,11 +73,35 @@ description: >-
 4. Call `propose-rule` with `feedbackId` and a one-line `reason`.
 5. Report from the preview: how many of the past 30 and next 7 days change,
    and whether the feedback day now matches what the user said.
+6. Navigate to the spot with `tab` "past" so the changed days show.
+
+## Reading `feedbackCheck`
+
+`propose-rule` (`preview.feedbackCheck`) and `get-spot` (`draft.effect.feedbackCheck`)
+list the draft's verdict on every day the user gave feedback on:
+`before` (active rule), `after` (draft), `userSays`, `matches`, `wasMatching`.
+- `matches` true: the draft agrees with the user on that day.
+- `matches` false and `wasMatching` true: the draft breaks a day the user
+  already confirmed. Tell the user which date and note, and offer a smaller
+  change before they approve.
+- `after` "UNKNOWN": no weather for that day; do not count it either way.
 
 ## Other actions
 
 - `list-spots`, `get-spot`, `backtest-rule` for reading.
 - `create-spot` needs lat/lon; use `search-places` first for a place name.
+- `update-spot` renames a spot, changes its activity or moves the pin.
+- `delete-spot` removes a spot and everything under it; it needs the user's approval.
+- `refresh-weather` fetches fresh weather for one spot or all.
+- `edit-rule` is UI-only (rule chip edits). Every agent change goes through a reviewed draft from `propose-rule`.
+- `navigate` takes `view`, `spotId`, `tab` (next, past, history) and `day`
+  (YYYY-MM-DD). After `propose-rule`, navigate to `tab` "past".
+- `compare-spots` ranks all spots for one date. For "where should I ride
+  Saturday?": turn the weekday into a date from today's date, call
+  `compare-spots`, answer from its ranking, then `navigate` to the top spot.
+- `view-screen` returns the navigation state and, on a spot screen, the spot,
+  active rule version, open draft with changed-day counts, the selected day's
+  verdict with per-condition results, and open feedback.
 - `set-replay-date` (`null` = live) for demos on past weather.
 - `morning-check` posts today's and tomorrow's calls to the inbox. To run it
   every day, create an automation with `manage-automations`

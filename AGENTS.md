@@ -1,6 +1,6 @@
-# Chat — Agent Guide
+# Spot Rules — Agent Guide
 
-Chat is the minimal chat-first agent-native app. `/` redirects to shared sign-in, then `/home`, the editable Get started page. Chat lives at `/chat`; new chats start there. Actions carry capabilities; screens exist only for durable workflows.
+Spot Rules is built on the agent-native chat template. `/` redirects to shared sign-in, then `/spots` (`app.homePath` in `server/plugins/agent-native-email-branding.ts`). Chat lives at `/chat`. Actions carry capabilities; screens exist only for durable workflows.
 
 ## Skills
 
@@ -19,14 +19,14 @@ For custom branding, keep `server/plugins/agent-native-email-branding.ts` aligne
 
 ## Application state
 
-- `navigation` describes the view and selected ids. Chat is `chat` at `/chat` and `/chat/<threadId>`; the Get started page is `home` at `/home`; `/` opens shared sign-in/signup.
+- `navigation` describes the view and selected ids. Chat is `chat` at `/chat` and `/chat/<threadId>`; spots are `spots` at `/spots` and `/spots/<id>`; `/` opens shared sign-in/signup, then `/spots`.
 - Use `navigate` when supported and `view-screen` for a fresh read of visible details; basic navigation is already in `<current-screen>`.
 
 ## Building a domain app
 
 Choose the primary workflow and route before editing. Add a domain route under `app/routes/` and set `app.homePath` in `server/plugins/agent-native-email-branding.ts` with `defineAppConfig`. The default Get started page lives at `/home`, and Chat stays at `/chat`; edit `app/routes/home.tsx` when replacing that page with a domain-specific home. Add a static link in `app/components/layout/Sidebar.tsx` before `ChatThreadsSection`; `Header.tsx` uses `APP_TITLE` elsewhere. Shared sidebar and AgentInspector remain.
 
-Use `adding-a-feature` for functional parity and `frontend-design` for a user-facing screen. Keep feature guidance here; do not rewrite `README.md` or `DESIGN.md`. After all edits, run one typecheck, one doctor check, and one browser smoke of the primary workflow, including overlap rejection, cancellation freeing the slot, and authenticated landing. Skip production build and extra test suites.
+Use `adding-a-feature` for functional parity and `frontend-design` for a user-facing screen. Keep feature guidance here; do not rewrite `README.md` or `DESIGN.md`. After all edits, run `pnpm test`, one typecheck and one doctor check.
 
 Before building common workspace or agent UI, read `agent-native-toolkit`; for supported customization, read `customizing-agent-native`.
 
@@ -37,8 +37,10 @@ Before building common workspace or agent UI, read `agent-native-toolkit`; for s
 Spot Rules: users pin outdoor spots and describe a good day in plain English. The agent writes typed rule drafts; `shared/evaluate.ts` (plain code) decides GO / MAYBE / NO from Open-Meteo weather. Never decide or guess a verdict; read it from `get-spot` or `backtest-rule`.
 
 - Screens: `/spots` (list + map), `/spots/:id?tab=next|past|history&day=YYYY-MM-DD`. Navigation state carries `view: "spots"`, `spotId`, `tab`, `day`.
-- Rule changes always go through `propose-rule` (saves a draft and returns its effect). Users approve in the UI; call `decide-rule-draft` only when the user clearly says approve.
+- Rule changes always go through `propose-rule` (saves a draft and returns its effect, including `feedbackCheck`). Users approve in the UI; call `decide-rule-draft` only when the user clearly says approve. `edit-rule` is UI-only (chip edits); the agent never calls it.
 - Wrong call: `give-feedback` (UI usually did this and passes `feedbackId`), then `propose-rule` with the smallest change plus `feedbackId`. Report changed days from the preview.
+- Reading: `list-spots`, `get-spot`, `backtest-rule`, `compare-spots` (rank spots for one day), `view-screen` (what the user sees, including the open draft and selected day). `navigate` takes `spotId`, `tab`, `day`.
+- Spot management: `create-spot`, `update-spot`, `delete-spot` (needs approval), `search-places`, `refresh-weather`.
 - Replay: `set-replay-date` freezes "today" on cached real weather for demos.
 - Daily summary: `morning-check`. To schedule it, create an automation with `manage-automations` (e.g. cron `0 6 * * *`, instructions "Run morning-check").
 - Rule schema, examples and pitfalls: `.agents/skills/spot-rules/SKILL.md`.

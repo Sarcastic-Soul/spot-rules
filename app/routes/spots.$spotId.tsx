@@ -1,17 +1,22 @@
 import { sendToAgentChat } from "@agent-native/core/client/agent-chat";
 import { useActionMutation, useActionQuery } from "@agent-native/core/client/hooks";
+import { suggestTemplateKey, TEMPLATES } from "@shared/templates";
 import {
   ArrowLeft,
   ArrowsClockwise,
+  CaretDown,
+  CaretUp,
   ChatCircleText,
   Check,
+  PencilSimple,
   Robot,
   Trash,
   User,
+  Warning,
   X,
 } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
 
@@ -33,6 +38,7 @@ import {
   diffRules,
   formatCondition,
   longDate,
+  prefersReducedMotion,
   shortWindow,
   windowText,
   type Condition,
@@ -41,6 +47,18 @@ import {
 } from "@/lib/spots";
 
 type Change = { date: string; from: string; to: string };
+
+type FeedbackCheckRow = {
+  feedbackId: string;
+  date: string;
+  userSays: "GO" | "MAYBE" | "NO";
+  before: string | null;
+  after: string;
+  matches: boolean;
+  wasMatching: boolean | null;
+};
+
+type Payoff = { spotId: string; version: number; dates: string[] };
 
 type SpotDetail = {
   spot: { id: string; name: string; activity: string; lat: number; lon: number; timezone: string };
@@ -59,6 +77,7 @@ type SpotDetail = {
       forecastChanges: Change[];
       backtestChanges: Change[];
       backtestCounts: Record<string, number>;
+      feedbackCheck?: FeedbackCheckRow[];
     } | null;
   } | null;
   forecast: DayVerdict[] | null;
@@ -72,6 +91,8 @@ type SpotDetail = {
     body: RuleBody;
     createdAt: string;
     decidedAt: string | null;
+    feedbackText?: string | null;
+    feedbackDate?: string | null;
   }[];
   feedback: {
     id: string;
@@ -81,6 +102,7 @@ type SpotDetail = {
     ruleVersion: number;
     status: string;
     resolvedByVersion: number | null;
+    verdict?: DayVerdict | null;
   }[];
 };
 
@@ -101,9 +123,16 @@ const TABS = [
 export default function SpotDetailRoute() {
   const { spotId = "" } = useParams();
   const [params, setParams] = useSearchParams();
+  const [payoff, setPayoff] = useState<Payoff | null>(null);
   const tab = params.get("tab") ?? "next";
   const day = params.get("day");
   const q = useActionQuery<SpotDetail>("get-spot", { id: spotId }, { enabled: !!spotId });
+
+  useEffect(() => {
+    if (!payoff) return;
+    const t = window.setTimeout(() => setPayoff(null), 4000);
+    return () => window.clearTimeout(t);
+  }, [payoff]);
 
   function setParam(key: string, value: string | null) {
     const next = new URLSearchParams(params);
@@ -131,14 +160,16 @@ export default function SpotDetailRoute() {
   }
 
   const d = q.data;
+  const live = payoff && payoff.spotId === d.spot.id ? payoff : null;
+  const flash = live ? new Set(live.dates) : undefined;
   return (
     <div className="pb-8">
       <SpotHeader d={d} />
-      {d.draft && <DraftCard d={d} />}
-      <RuleBlock d={d} />
+      {d.draft && <DraftCard d={d} onApproved={setPayoff} />}
+      {!d.activeRule && <RuleBlock d={d} />}
       {d.activeRule && (
         <>
-          <div role="tablist" aria-label="Views" className="mt-6 flex border-b border-foreground px-5">
+          <div role="tablist" aria-label="Views" className="mt-3 flex border-b border-foreground px-5">
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -160,9 +191,10 @@ export default function SpotDetailRoute() {
             ))}
           </div>
           {tab === "next" && d.forecast && (
-            <NextWeek d={d} day={day} onDay={(v) => setParam("day", v)} />
+            <NextWeek d={d} day={day} onDay={(v) => setParam("day", v)} flash={flash} />
           )}
-          {tab === "past" && <PastMonth d={d} day={day} onDay={(v) => setParam("day", v)} />}
+          {tab === "past" && <PastMonth d={d} day={day} onDay={(v) => setParam("day", v)} flash={flash} />}
+          <RuleBlock d={d} live={live} />
           {tab === "history" && <History d={d} />}
         </>
       )}
@@ -228,7 +260,7 @@ function SpotHeader({ d }: { d: SpotDetail }) {
           </AlertDialog>
         </span>
       </div>
-      <h2 className="mt-2 font-display text-[38px] font-extrabold leading-[1.02] tracking-[-0.03em]">{d.spot.name}</h2>
+      <SpotTitle d={d} />
       <p className="mt-1 text-sm text-muted-foreground">
         {d.spot.activity} · <span className="font-plex text-xs">{d.spot.lat.toFixed(3)}, {d.spot.lon.toFixed(3)}</span>
       </p>
@@ -236,9 +268,79 @@ function SpotHeader({ d }: { d: SpotDetail }) {
   );
 }
 
+function SpotTitle({ d }: { d: SpotDetail }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(d.spot.name);
+  const rename = useActionMutation("update-spot", {
+    onSuccess: () => {
+      setEditing(false);
+      toast.success("Spot renamed");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  function save() {
+    const next = name.trim();
+    if (!next) return toast.error("A spot needs a name");
+    if (next === d.spot.name) return setEditing(false);
+    rename.mutate({ id: d.spot.id, name: next });
+  }
+
+  if (editing) {
+    return (
+      <form
+        className="mt-2 flex items-center gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
+        <label htmlFor="spot-name" className="sr-only">Spot name</label>
+        <input
+          id="spot-name"
+          autoFocus
+          maxLength={80}
+          value={name}
+          disabled={rename.isPending}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              setEditing(false);
+            }
+          }}
+          className={`${field} font-display text-xl font-bold`}
+        />
+        <button type="submit" className={btn.solid} disabled={rename.isPending} aria-label="Save name">
+          <Check size={16} weight="bold" />
+        </button>
+        <button type="button" className={btn.ghost} disabled={rename.isPending} aria-label="Cancel rename" onClick={() => setEditing(false)}>
+          <X size={16} />
+        </button>
+      </form>
+    );
+  }
+  return (
+    <div className="mt-2 flex items-start gap-1">
+      <h2 className="min-w-0 break-words font-display text-[32px] font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-[38px]">{d.spot.name}</h2>
+      <button
+        type="button"
+        className={`${btn.ghost} shrink-0`}
+        aria-label={`Rename ${d.spot.name}`}
+        onClick={() => {
+          setName(d.spot.name);
+          setEditing(true);
+        }}
+      >
+        <PencilSimple size={16} />
+      </button>
+    </div>
+  );
+}
+
 /* ---------- Rule ---------- */
 
-function RuleBlock({ d }: { d: SpotDetail }) {
+function RuleBlock({ d, live }: { d: SpotDetail; live?: Payoff | null }) {
   const rule = d.activeRule;
   if (!rule) {
     if (d.draft) return null;
@@ -246,8 +348,13 @@ function RuleBlock({ d }: { d: SpotDetail }) {
   }
   return (
     <div className="mt-5 px-5">
-      <div className="flex items-baseline">
+      <div className="flex flex-wrap items-baseline">
         <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">Rule v{rule.version}</h3>
+        {live && (
+          <span role="status" className="spot-anim ml-2 bg-foreground px-1.5 font-plex text-[11px] text-background">
+            v{live.version} live
+          </span>
+        )}
         <span className="ml-2 font-plex text-[11px] text-muted-foreground">
           {rule.createdBy === "agent" ? "drafted by agent, approved by you" : "edited by you"}
         </span>
@@ -350,8 +457,23 @@ function RuleChips({ d }: { d: SpotDetail }) {
   );
 }
 
-function askAgent(message: string, context: string) {
-  sendToAgentChat({ message, context, submit: true });
+function askAgent(message: string, context: string, sent = "Sent to the agent") {
+  try {
+    sendToAgentChat({ message, context, submit: true });
+    toast.success(sent);
+    return true;
+  } catch {
+    toast.error("Couldn't reach the agent. Your text is still here, try again.");
+    return false;
+  }
+}
+
+function feedbackMessage(d: SpotDetail, date: string, appSaid: string, userSays: string, reason: string) {
+  return `On ${longDate(date)} at ${d.spot.name} the app said ${appSaid}, but it should be ${userSays}: “${reason}”. Propose the smallest rule change that fixes this.`;
+}
+
+function feedbackContext(d: SpotDetail, feedbackId: string) {
+  return `Spot Rules. spotId=${d.spot.id}. feedbackId=${feedbackId}. Call propose-rule with this feedbackId, then report how many past days change.`;
 }
 
 function ChangeInWords({ d, draftId, autoFocus }: { d: SpotDetail; draftId?: string; autoFocus?: boolean }) {
@@ -363,7 +485,7 @@ function ChangeInWords({ d, draftId, autoFocus }: { d: SpotDetail; draftId?: str
       onSubmit={(e) => {
         e.preventDefault();
         if (text.trim().length < 3) return;
-        askAgent(
+        const sent = askAgent(
           draftId
             ? `Change this draft for ${d.spot.name}: ${text.trim()}`
             : `Change the rule for ${d.spot.name}: ${text.trim()}`,
@@ -371,7 +493,7 @@ function ChangeInWords({ d, draftId, autoFocus }: { d: SpotDetail; draftId?: str
             ? `Spot Rules. spotId=${d.spot.id}. draftId=${draftId}. Revise the draft with propose-rule; keep everything the user did not mention.`
             : `Spot Rules. spotId=${d.spot.id}. Active rule v${d.activeRule?.version}. Use propose-rule to save a draft with the smallest change; do not decide verdicts yourself.`,
         );
-        setText("");
+        if (sent) setText("");
       }}
     >
       <label htmlFor={id} className="sr-only">
@@ -398,6 +520,44 @@ const RULE_EXAMPLES: Record<string, string> = {
   hiking: "Good hike: 6 am to 2 pm, 5 hours, less than 2 mm rain in the window, no more than 10 mm in the 48 hours before, visibility over 5 km.",
 };
 
+function StarterTemplates({ d }: { d: SpotDetail }) {
+  const suggested = suggestTemplateKey(d.spot.activity);
+  const [busy, setBusy] = useState<string | null>(null);
+  const propose = useActionMutation("propose-rule", {
+    onSuccess: () => toast.success("Starter rule drafted. Check it, then approve."),
+    onError: (e: Error) => toast.error(e.message),
+    onSettled: () => setBusy(null),
+  });
+  return (
+    <div className="mt-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">Start from a template</p>
+      <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Starter templates">
+        {TEMPLATES.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            disabled={propose.isPending}
+            aria-busy={busy === t.key}
+            className={t.key === suggested ? btn.signal : btn.line}
+            onClick={() => {
+              setBusy(t.key);
+              propose.mutate({
+                spotId: d.spot.id,
+                sourceText: t.sourceText,
+                body: t.body,
+                reason: `Starter template: ${t.label}`,
+              });
+            }}
+          >
+            {busy === t.key ? "Drafting…" : t.label}
+            {t.key === suggested && busy !== t.key && <span className="font-plex text-[11px] font-normal">suggested</span>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AskForRule({ d }: { d: SpotDetail }) {
   const key = Object.keys(RULE_EXAMPLES).find((k) => d.spot.activity.toLowerCase().includes(k.slice(0, 4)));
   const example = (key && RULE_EXAMPLES[key]) || RULE_EXAMPLES.cycling!;
@@ -408,22 +568,25 @@ function AskForRule({ d }: { d: SpotDetail }) {
       onSubmit={(e) => {
         e.preventDefault();
         if (text.trim().length < 5) return;
-        askAgent(
+        const sent = askAgent(
           `Make a rule for ${d.spot.name} (${d.spot.activity}): ${text.trim()}`,
           `Spot Rules. spotId=${d.spot.id}. No rule yet. Turn the user's words into a typed rule with propose-rule; keep the user's words as sourceText.`,
         );
-        setText("");
+        if (sent) setText("");
       }}
     >
       <h3 className="font-display text-xl font-semibold">What does a good day look like here?</h3>
       <p className="mt-1 text-sm text-muted-foreground">
-        Say it the way you'd tell a friend. The agent turns it into a rule you can check before it's saved.
+        Pick a starter and tune it later, or say it the way you'd tell a friend. Nothing goes live until you approve it.
       </p>
-      <label htmlFor="rule-text" className="sr-only">Your rule</label>
+      <StarterTemplates d={d} />
+      <label htmlFor="rule-text" className="mt-4 block text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        Or describe it to the agent
+      </label>
       <textarea
         id="rule-text"
         rows={4}
-        className={`${field} mt-3 h-auto py-2 leading-relaxed`}
+        className={`${field} mt-2 h-auto py-2 leading-relaxed`}
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={example}
@@ -442,13 +605,33 @@ function AskForRule({ d }: { d: SpotDetail }) {
 
 /* ---------- Draft ---------- */
 
-function DraftCard({ d }: { d: SpotDetail }) {
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+function DraftCard({ d, onApproved }: { d: SpotDetail; onApproved: (p: Payoff) => void }) {
   const draft = d.draft!;
   const qc = useQueryClient();
-  const decide = useActionMutation<unknown>("decide-rule-draft", {
-    onSuccess: (_r, vars: any) => {
-      toast.success(vars?.decision === "approve" ? "Rule is live" : "Draft dropped");
+  const approving = useRef<{ spotId: string; isNew: boolean; effect: NonNullable<SpotDetail["draft"]>["effect"] } | null>(null);
+  const decide = useActionMutation<{ status: string; version: number | null }>("decide-rule-draft", {
+    onSuccess: (r, vars: any) => {
       void qc.invalidateQueries({ queryKey: ["action"] });
+      if (vars?.decision !== "approve") {
+        toast.success("Draft dropped");
+        return;
+      }
+      const snap = approving.current;
+      approving.current = null;
+      const version = r.version ?? 0;
+      const past = snap?.effect?.backtestChanges ?? [];
+      const next = snap?.effect?.forecastChanges ?? [];
+      if (snap?.isNew) {
+        const go = snap.effect?.backtestCounts.GO;
+        toast.success(go === undefined ? `Rule v${version} live` : `Rule v${version} live: ${plural(go, "GO day")} in the past 30`);
+      } else if (!past.length && !next.length) {
+        toast.success(`Rule v${version} live: no days changed`);
+      } else {
+        toast.success(`Rule v${version} live: ${plural(past.length, "past day")} and ${plural(next.length, "upcoming day")} changed`);
+      }
+      onApproved({ spotId: snap?.spotId ?? draft.id, version, dates: [...past, ...next].map((c) => c.date) });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -519,12 +702,16 @@ function DraftCard({ d }: { d: SpotDetail }) {
           <WeekStrip verdicts={eff.forecast} compact />
         </div>
       )}
+      {eff?.feedbackCheck && eff.feedbackCheck.length > 0 && <FeedbackCheck rows={eff.feedbackCheck} />}
       <div className="flex gap-2 border-t border-border px-4 py-3">
         <button
           type="button"
           className={btn.signal}
           disabled={decide.isPending}
-          onClick={() => decide.mutate({ draftId: draft.id, decision: "approve" })}
+          onClick={() => {
+            approving.current = { spotId: d.spot.id, isNew, effect: eff };
+            decide.mutate({ draftId: draft.id, decision: "approve" });
+          }}
         >
           <Check size={16} weight="bold" /> {isNew ? "Approve rule" : "Approve change"}
         </button>
@@ -547,6 +734,68 @@ function DraftCard({ d }: { d: SpotDetail }) {
       </div>
       {tweaking && <ChangeInWords d={d} draftId={draft.id} autoFocus />}
     </section>
+  );
+}
+
+function FeedbackCheck({ rows }: { rows: FeedbackCheckRow[] }) {
+  const [open, setOpen] = useState(false);
+  const fixes = rows.filter((r) => !r.wasMatching && r.matches);
+  const keeps = rows.filter((r) => r.wasMatching && r.matches);
+  const breaks = rows.filter((r) => r.wasMatching && !r.matches);
+  const still = rows.filter((r) => !r.wasMatching && !r.matches);
+  const parts = [
+    `Fixes ${plural(fixes.length, "note")}`,
+    `keeps ${keeps.length}`,
+    `breaks ${breaks.length}`,
+    ...(still.length ? [`${still.length} still wrong`] : []),
+  ];
+  const ordered: [FeedbackCheckRow, "breaks" | "fixes" | "keeps" | "still"][] = [
+    ...breaks.map((r) => [r, "breaks"] as [FeedbackCheckRow, "breaks"]),
+    ...fixes.map((r) => [r, "fixes"] as [FeedbackCheckRow, "fixes"]),
+    ...keeps.map((r) => [r, "keeps"] as [FeedbackCheckRow, "keeps"]),
+    ...still.map((r) => [r, "still"] as [FeedbackCheckRow, "still"]),
+  ];
+  const labels = { breaks: "Breaks", fixes: "Fixes", keeps: "Still matches", still: "Still wrong" };
+  return (
+    <div className="px-4 pb-3 text-[13px]">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls="feedback-check-list"
+        onClick={() => setOpen((v) => !v)}
+        className="flex min-h-9 w-full items-center gap-1.5 text-left font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {breaks.length > 0 && <Warning size={15} weight="fill" className="shrink-0 text-signal" aria-hidden />}
+        <span>{parts.join(", ")}</span>
+        {open ? <CaretUp size={14} className="ml-auto shrink-0" aria-hidden /> : <CaretDown size={14} className="ml-auto shrink-0" aria-hidden />}
+      </button>
+      {open && (
+        <ul id="feedback-check-list" className="mt-1 border border-border">
+          {ordered.map(([r, kind]) => (
+            <li
+              key={r.feedbackId}
+              className={`flex items-start gap-2 border-b border-border px-3 py-1.5 last:border-b-0 ${
+                kind === "breaks" ? "border-l-2 border-l-signal bg-signal/10" : ""
+              }`}
+            >
+              {kind === "breaks" ? (
+                <Warning size={14} weight="fill" className="mt-0.5 shrink-0 text-signal" aria-hidden />
+              ) : kind === "still" ? (
+                <X size={14} weight="bold" className="mt-0.5 shrink-0" aria-hidden />
+              ) : (
+                <Check size={14} weight="bold" className="mt-0.5 shrink-0" aria-hidden />
+              )}
+              <span>
+                <span className={kind === "breaks" ? "font-bold" : "font-medium"}>{labels[kind]}</span> {longDate(r.date)} (you said {r.userSays})
+                <span className="ml-1.5 font-plex text-[11.5px] text-muted-foreground">
+                  {r.before ?? "—"} → {r.after}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -590,34 +839,59 @@ function WeekStrip({
   selected,
   onSelect,
   compact,
+  flash,
 }: {
   verdicts: DayVerdict[];
   selected?: string | null;
   onSelect?: (date: string) => void;
   compact?: boolean;
+  flash?: Set<string> | undefined;
 }) {
   return (
-    <div className="grid grid-cols-7 border-t border-foreground">
-      {verdicts.map((v) => {
+    <div className={`grid grid-cols-7 gap-1 ${compact ? "pt-2" : ""}`}>
+      {verdicts.map((v, i) => {
         const Tag = onSelect ? "button" : "div";
+        const [weekday, dateNum] = dayLabel(v.date).split(" ");
+        const label = v.result === "UNKNOWN" ? "—" : v.result === "SKIP" ? "off" : v.result;
+        const long = label.length > 3;
+        const go = v.result === "GO";
         return (
           <Tag
             key={v.date}
             {...(onSelect ? { type: "button" as const, onClick: () => onSelect(v.date), "aria-pressed": selected === v.date } : {})}
-            className={`flex min-w-0 flex-col items-stretch justify-start border-r border-border px-1.5 text-left last:border-r-0 ${compact ? "py-1.5" : "min-h-[96px] py-2"} ${
-              onSelect ? "transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" : ""
-            } ${selected === v.date ? "bg-muted shadow-[inset_0_-3px_0_hsl(var(--signal))]" : ""}`}
+            title={v.reason}
+            style={{ animationDelay: `${i * 40}ms` }}
+            className={`spot-cell-in cell-${v.result} flex min-w-0 flex-col items-center justify-start border border-foreground/25 px-0.5 text-center ${compact ? "py-1.5" : "min-h-[88px] py-2"} ${
+              onSelect ? "transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : ""
+            } ${selected === v.date ? "shadow-[inset_0_0_0_3px_hsl(var(--foreground))]" : ""} ${flash?.has(v.date) ? "day-flash" : ""}`}
           >
-            <span className="block font-plex text-[10.5px] text-muted-foreground">{dayLabel(v.date)}</span>
-            <span className={`verdict-${v.result} block font-display ${compact ? "text-sm" : "mt-1.5 text-[19px]"} leading-tight`}>
-              {v.result === "UNKNOWN" ? "—" : v.result === "SKIP" ? "off" : v.result}
+            {compact ? (
+              <span className="block font-plex text-[11px] leading-tight">{dayLabel(v.date)}</span>
+            ) : (
+              <>
+                <span className="flex items-center gap-0.5 font-plex text-[11px] leading-tight">
+                  {weekday}
+                  {go && <Check size={12} weight="bold" aria-hidden />}
+                </span>
+                <span className="block font-plex text-[11px] leading-tight">{dateNum}</span>
+              </>
+            )}
+            <span
+              className={`mt-1 inline-flex items-center gap-0.5 font-display leading-tight ${
+                compact ? "text-sm" : long ? "text-[11px] tracking-tight sm:text-[13px]" : "text-xl"
+              } ${go ? "font-extrabold" : v.result === "MAYBE" ? "bg-card/85 px-0.5 font-semibold italic" : v.result === "NO" ? "font-semibold line-through decoration-2" : "font-normal"}`}
+            >
+              {compact && go && <Check size={12} weight="bold" aria-hidden />}
+              {label}
             </span>
             {!compact && (
               <>
-                <span className="mt-1 block font-plex text-[10px]">
+                <span className="mt-1 block font-plex text-[11px] leading-tight">
                   {v.bestStart && v.bestEnd ? `${v.bestStart.slice(0, 2)}–${v.bestEnd.slice(0, 2)}h` : ""}
                 </span>
-                <span className="mt-1 line-clamp-3 text-[10.5px] leading-tight text-muted-foreground">{shortReason(v)}</span>
+                <span className="mt-1 hidden text-[11px] leading-tight sm:block">
+                  <span className="line-clamp-3 block">{shortReason(v)}</span>
+                </span>
               </>
             )}
           </Tag>
@@ -627,14 +901,14 @@ function WeekStrip({
   );
 }
 
-function NextWeek({ d, day, onDay }: { d: SpotDetail; day: string | null; onDay: (v: string | null) => void }) {
+function NextWeek({ d, day, onDay, flash }: { d: SpotDetail; day: string | null; onDay: (v: string | null) => void; flash?: Set<string> | undefined }) {
   const verdicts = d.forecast!;
   const sel = verdicts.find((v) => v.date === day) ?? null;
   return (
     <div className="px-5 pt-4">
-      <WeekStrip verdicts={verdicts} selected={day} onSelect={(x) => onDay(x === day ? null : x)} />
+      <WeekStrip verdicts={verdicts} selected={day} onSelect={(x) => onDay(x === day ? null : x)} flash={flash} />
       {sel ? (
-        <DayDetail d={d} v={sel} onClose={() => onDay(null)} />
+        <DayDetail key={sel.date} d={d} v={sel} onClose={() => onDay(null)} />
       ) : (
         <p className="mt-3 text-[13px] text-muted-foreground">Tap a day to see why. If a call looks wrong, tell the agent.</p>
       )}
@@ -642,7 +916,7 @@ function NextWeek({ d, day, onDay }: { d: SpotDetail; day: string | null; onDay:
   );
 }
 
-function PastMonth({ d, day, onDay }: { d: SpotDetail; day: string | null; onDay: (v: string | null) => void }) {
+function PastMonth({ d, day, onDay, flash }: { d: SpotDetail; day: string | null; onDay: (v: string | null) => void; flash?: Set<string> | undefined }) {
   const q = useActionQuery<Backtest>("backtest-rule", { spotId: d.spot.id, days: 30 });
   if (q.isLoading) return <Skeleton className="mx-5 mt-4 h-40 rounded-none" />;
   if (q.error || !q.data?.active) return <p className="px-5 pt-4 text-sm text-destructive">{(q.error as Error)?.message ?? "No backtest."}</p>;
@@ -662,7 +936,7 @@ function PastMonth({ d, day, onDay }: { d: SpotDetail; day: string | null; onDay
           With the draft: <Counts counts={bt.draft.counts} /> · <b>{bt.changes.length}</b> days change (outlined)
         </p>
       )}
-      <div className="mt-3 grid grid-cols-7 gap-1 font-plex text-[10px] text-muted-foreground">
+      <div className="mt-3 grid grid-cols-7 gap-1 font-plex text-[11px] text-muted-foreground">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((w) => (
           <span key={w} className="text-center">{w}</span>
         ))}
@@ -680,19 +954,19 @@ function PastMonth({ d, day, onDay }: { d: SpotDetail; day: string | null; onDay
               onClick={() => onDay(v.date === day ? null : v.date)}
               aria-pressed={day === v.date}
               title={`${longDate(v.date)}: ${v.result}${changed ? ` → ${dv!.result} with draft` : ""} · ${v.reason}`}
-              className={`cell-${v.result} relative flex h-10 flex-col items-center justify-center border text-[10.5px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              className={`cell-${v.result} relative flex h-10 flex-col items-center justify-center border text-[11px] font-medium leading-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 changed ? "border-2 border-foreground" : "border-foreground/20"
-              } ${day === v.date ? "ring-2 ring-foreground ring-offset-1" : ""}`}
+              } ${day === v.date ? "ring-2 ring-foreground ring-offset-1" : ""} ${flash?.has(v.date) ? "day-flash" : ""}`}
             >
               <span>{Number(v.date.slice(8))}</span>
-              <span className="text-[9px]">{changed ? `→${dv!.result}` : v.result === "GO" ? "GO" : v.result === "NO" ? "NO" : v.result === "MAYBE" ? "?" : ""}</span>
+              <span className="text-[11px]">{changed ? `→${dv!.result}` : v.result === "GO" ? "GO" : v.result === "NO" ? "NO" : v.result === "MAYBE" ? "?" : ""}</span>
               {fb && <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-foreground" aria-label="you left feedback" />}
             </button>
           );
         })}
       </div>
       {sel ? (
-        <DayDetail d={d} v={sel} onClose={() => onDay(null)} past />
+        <DayDetail key={sel.date} d={d} v={sel} onClose={() => onDay(null)} past />
       ) : (
         <p className="mt-3 text-[13px] text-muted-foreground">Remember one of these days? Tap it and say if the call was right.</p>
       )}
@@ -703,22 +977,28 @@ function PastMonth({ d, day, onDay }: { d: SpotDetail; day: string | null; onDay
 function DayDetail({ d, v, onClose, past }: { d: SpotDetail; v: DayVerdict; onClose: () => void; past?: boolean }) {
   const [says, setSays] = useState<"GO" | "MAYBE" | "NO" | null>(null);
   const [reason, setReason] = useState("");
+  const box = useRef<HTMLElement>(null);
   const existing = d.feedback.find((f) => f.date === v.date);
+  useEffect(() => {
+    box.current?.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+  }, []);
   const give = useActionMutation<{ feedbackId: string; appSaid: string }>("give-feedback", {
     onSuccess: (r, vars: any) => {
-      toast.success("Noted. Asking the agent for a fix…");
-      askAgent(
-        `On ${longDate(v.date)} at ${d.spot.name} the app said ${r.appSaid}, but it should be ${vars.userSays}: “${vars.reason}”. Propose the smallest rule change that fixes this.`,
-        `Spot Rules. spotId=${d.spot.id}. feedbackId=${r.feedbackId}. Call propose-rule with this feedbackId, then report how many past days change.`,
+      const sent = askAgent(
+        feedbackMessage(d, v.date, r.appSaid, vars.userSays, vars.reason),
+        feedbackContext(d, r.feedbackId),
+        "Noted. Sent to the agent for a fix",
       );
-      setSays(null);
-      setReason("");
+      if (sent) {
+        setSays(null);
+        setReason("");
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
   const options = (["GO", "MAYBE", "NO"] as const).filter((o) => o !== v.result);
   return (
-    <section className="mt-4 border border-foreground bg-card" aria-label={`Details for ${longDate(v.date)}`}>
+    <section ref={box} className="spot-anim mt-4 border border-foreground bg-card" aria-label={`Details for ${longDate(v.date)}`}>
       <div className="flex items-baseline gap-3 border-b border-border px-4 py-2.5">
         <span className={`verdict-${v.result} font-display text-2xl`}>{v.result}</span>
         <span className="text-sm font-medium">{longDate(v.date)}</span>
@@ -747,12 +1027,29 @@ function DayDetail({ d, v, onClose, past }: { d: SpotDetail; v: DayVerdict; onCl
       )}
       <div className="border-t border-border bg-muted/40 px-4 py-3">
         {existing ? (
-          <p className="text-[13px]">
-            You said <b>{existing.userSays}</b>: “{existing.reasonText}”{" "}
-            <span className="text-muted-foreground">
-              {existing.status === "resolved" ? `· fixed in v${existing.resolvedByVersion}` : "· waiting on a rule change"}
-            </span>
-          </p>
+          <div>
+            <p className="text-[13px]">
+              You said <b>{existing.userSays}</b>: “{existing.reasonText}”{" "}
+              <span className="text-muted-foreground">
+                {existing.status === "resolved" ? `· fixed in v${existing.resolvedByVersion}` : "· waiting on a rule change"}
+              </span>
+            </p>
+            {existing.status === "open" && !d.draft && (
+              <button
+                type="button"
+                className={`${btn.line} mt-2`}
+                onClick={() =>
+                  askAgent(
+                    feedbackMessage(d, v.date, existing.verdict?.result ?? v.result, existing.userSays, existing.reasonText),
+                    feedbackContext(d, existing.id),
+                    "Sent to the agent again",
+                  )
+                }
+              >
+                <Robot size={15} /> Ask the agent again
+              </button>
+            )}
+          </div>
         ) : v.result === "UNKNOWN" || v.result === "SKIP" ? null : (
           <form
             onSubmit={(e) => {
@@ -788,7 +1085,7 @@ function DayDetail({ d, v, onClose, past }: { d: SpotDetail; v: DayVerdict; onCl
                   placeholder={says === "GO" ? "Why? e.g. gusts 33 were fine" : "Why? e.g. too gusty on the descent"}
                 />
                 <button type="submit" className={btn.solid} disabled={give.isPending || reason.trim().length < 2}>
-                  Send
+                  {give.isPending ? "Sending…" : "Send"}
                 </button>
               </div>
             )}
@@ -801,35 +1098,79 @@ function DayDetail({ d, v, onClose, past }: { d: SpotDetail; v: DayVerdict; onCl
 
 /* ---------- History ---------- */
 
+const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
+const condText = (c: Condition) => `${formatCondition(c)}${c.severity === "soft" ? " (soft)" : ""}`;
+
+function VersionDiff({ prev, next }: { prev: RuleBody; next: RuleBody }) {
+  const diff = diffRules(prev, next);
+  const lines = diff.conditions.filter((c) => c.kind !== "same");
+  if (!diff.windowChanged && !lines.length) return null;
+  return (
+    <ul className="mt-1 font-plex text-[11.5px] leading-relaxed" aria-label="Changed from the previous version">
+      {diff.windowChanged && (
+        <li>
+          <span className="text-muted-foreground">window </span>
+          <span className="text-muted-foreground line-through">{windowText(prev)}</span> → {windowText(next)}
+        </li>
+      )}
+      {lines.map((c, i) => (
+        <li key={i}>
+          {c.kind === "added" && <>+ {condText(c.after)}</>}
+          {c.kind === "removed" && <span className="text-muted-foreground line-through">− {condText(c.before)}</span>}
+          {c.kind === "changed" && (
+            <>
+              <span className="text-muted-foreground line-through">{condText(c.before)}</span> → {condText(c.after)}
+            </>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function History({ d }: { d: SpotDetail }) {
   const items = d.history.filter((h) => h.status !== "rejected" || h.createdBy === "agent");
   return (
     <ol className="px-5 pt-4">
-      {items.map((h) => (
-        <li key={h.id} className="grid grid-cols-[52px_1fr] gap-3 border-b border-border py-3 last:border-b-0">
-          <span className="font-display text-xl font-bold">{h.version ? `v${h.version}` : "—"}</span>
-          <div className="min-w-0">
-            <p className="flex flex-wrap items-center gap-x-2 text-[13px]">
-              {h.createdBy === "agent" ? <Robot size={14} aria-hidden /> : <User size={14} aria-hidden />}
-              <span className="font-medium">
-                {h.createdBy !== "agent"
-                  ? "You edited"
-                  : h.status !== "rejected"
-                    ? "Agent proposed · you approved"
-                    : h.reason === "Replaced by a newer draft"
-                      ? "Agent proposed · replaced by a newer draft"
-                      : "Agent proposed · you rejected"}
-              </span>
-              <span className="font-plex text-[11px] text-muted-foreground">{new Date(h.decidedAt ?? h.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</span>
-              {h.status === "active" && <span className="bg-foreground px-1.5 font-plex text-[10px] text-background">LIVE</span>}
-            </p>
-            {h.reason && <p className="mt-0.5 text-[13px] text-muted-foreground">{h.reason}</p>}
-            <p className="mt-1 font-plex text-[11.5px] leading-relaxed">
-              {windowText(h.body)} · {h.body.conditions.map((c) => formatCondition(c)).join(" · ")}
-            </p>
-          </div>
-        </li>
-      ))}
+      {items.map((h) => {
+        const at = d.history.findIndex((x) => x.id === h.id);
+        const prev = d.history.slice(at + 1).find((x) => x.version !== null);
+        const diff = prev ? <VersionDiff prev={prev.body} next={h.body} /> : null;
+        const full = `${windowText(h.body)} · ${h.body.conditions.map((c) => formatCondition(c)).join(" · ")}`;
+        return (
+          <li key={h.id} className="grid grid-cols-[52px_1fr] gap-3 border-b border-border py-3 last:border-b-0">
+            <span className="font-display text-xl font-bold">{h.version ? `v${h.version}` : "—"}</span>
+            <div className="min-w-0">
+              <p className="flex flex-wrap items-center gap-x-2 text-[13px]">
+                {h.createdBy === "agent" ? <Robot size={14} aria-hidden /> : <User size={14} aria-hidden />}
+                <span className="font-medium">
+                  {h.createdBy !== "agent"
+                    ? "You edited"
+                    : h.status !== "rejected"
+                      ? "Agent proposed · you approved"
+                      : h.reason === "Replaced by a newer draft"
+                        ? "Agent proposed · replaced by a newer draft"
+                        : "Agent proposed · you rejected"}
+                </span>
+                <span className="font-plex text-[11px] text-muted-foreground">{new Date(h.decidedAt ?? h.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</span>
+                {h.status === "active" && <span className="bg-foreground px-1.5 font-plex text-[11px] text-background">LIVE</span>}
+              </p>
+              {h.reason && <p className="mt-0.5 text-[13px] text-muted-foreground">{h.reason}</p>}
+              {h.feedbackText && (
+                <p className="mt-0.5 text-[13px]" title={h.feedbackText}>
+                  because you said: “{clip(h.feedbackText, 140)}”
+                  {h.feedbackDate && <span className="text-muted-foreground"> ({longDate(h.feedbackDate)})</span>}
+                </p>
+              )}
+              {diff ?? (
+                <p className="mt-1 font-plex text-[11.5px] leading-relaxed" title={full}>
+                  {full}
+                </p>
+              )}
+            </div>
+          </li>
+        );
+      })}
     </ol>
   );
 }
