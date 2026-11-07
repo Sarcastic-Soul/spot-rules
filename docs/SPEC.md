@@ -210,14 +210,20 @@ change".
 
 - [ ] A new user can pin a spot, write a rule in English, approve the draft and
       see a 7-day verdict strip in under 2 minutes.
-- [ ] Every verdict explains itself per condition.
+- [x] Every verdict explains itself per condition. (Checked live 2026-11-07:
+      each day shows its main reason, e.g. "rain 2.4 mm in past 24 h".)
 - [ ] Disagreeing with a verdict produces a rule diff, and approving it visibly
-      changes the backtest.
+      changes the backtest. (Rule v2 on the live app is "drafted by agent,
+      approved by you", but I did not re-run the feedback flow in the final check.)
 - [ ] The morning check runs from the scheduler and from "Run now" and leaves an
-      inbox notification.
+      inbox notification. ("Run now" works live and shows a summary toast. The
+      scheduled run and the inbox entry were not checked.)
 - [ ] The agent can do every UI action, and the UI can do every agent action.
-- [ ] Evaluator unit tests pass; `pnpm build` passes.
-- [ ] Live on Vercel with Neon; replay mode works there.
+- [x] Evaluator unit tests pass; `pnpm build` passes. (42 tests in 3 files,
+      typecheck, doctor and build all exit 0 on 2026-11-07.)
+- [x] Live on Vercel with Neon. (https://spot-rules.vercel.app: sign-in, spot
+      list, spot detail and map load, actions return data.)
+- [ ] Replay mode works on the live app. (The control is there; not exercised.)
 
 ## 11. Changes during the build
 
@@ -229,6 +235,13 @@ change".
 - Morning automation: automations in Agent-Native are per user and run by the
   agent. "Morning check" runs it now; "Run daily" asks the agent to create the
   `0 6 * * *` automation with `manage-automations`.
+- Fixes after end-to-end testing: rule parsing pitfalls (a condition is what a
+  good day needs, `endHour` is the finish time), the MapLibre worker in
+  production builds, and place search ranked by distance.
+- Added `shared/rules.test.ts` (rule schema checks). Removed the template
+  `hello` action.
+- Not built: S1 compare spots, S2 activity templates, S3 sunrise windows,
+  S4 share a rule.
 
 ## 12. Pre-existing work used
 
