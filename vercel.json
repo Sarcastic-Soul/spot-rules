@@ -1,0 +1,3 @@
+{
+  "buildCommand": "AGENT_NATIVE_VERCEL_CRON_SCHEDULE=\"30 0 * * *\" NITRO_PRESET=vercel pnpm build"
+}
