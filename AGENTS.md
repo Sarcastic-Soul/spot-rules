@@ -1,6 +1,6 @@
 # Spot Rules — Agent Guide
 
-Spot Rules is built on the agent-native chat template. `/` redirects to shared sign-in, then `/spots` (`app.homePath` in `server/plugins/agent-native-email-branding.ts`). Chat lives at `/chat`. Actions carry capabilities; screens exist only for durable workflows.
+Spot Rules is built on the agent-native chat template. `/` redirects to shared sign-in, then `/spots` (`app.homePath` in `server/plugins/agent-native-email-branding.ts`). Chat lives at `/chat`. Actions carry capabilities; screens exist only for durable workflows. Database admin and observability screens from the template were removed.
 
 ## Skills
 
@@ -22,15 +22,11 @@ For custom branding, keep `server/plugins/agent-native-email-branding.ts` aligne
 - `navigation` describes the view and selected ids. Chat is `chat` at `/chat` and `/chat/<threadId>`; spots are `spots` at `/spots` and `/spots/<id>`; `/` opens shared sign-in/signup, then `/spots`.
 - Use `navigate` when supported and `view-screen` for a fresh read of visible details; basic navigation is already in `<current-screen>`.
 
-## Building a domain app
+## Changing the app
 
-Choose the primary workflow and route before editing. Add a domain route under `app/routes/` and set `app.homePath` in `server/plugins/agent-native-email-branding.ts` with `defineAppConfig`. The default Get started page lives at `/home`, and Chat stays at `/chat`; edit `app/routes/home.tsx` when replacing that page with a domain-specific home. Add a static link in `app/components/layout/Sidebar.tsx` before `ChatThreadsSection`; `Header.tsx` uses `APP_TITLE` elsewhere. Shared sidebar and AgentInspector remain.
+Domain routes live in `app/routes/` (`spots*.tsx`). The sidebar link is in `app/components/layout/Sidebar.tsx`; `app.homePath` is set in `server/plugins/agent-native-email-branding.ts`. Use `adding-a-feature` for functional parity and `frontend-design` for a user-facing screen. `README.md` (overview and run steps), `DESIGN.md` (the look) and `docs/SPEC.md` (spec and what shipped) describe this app; keep them in step with changes.
 
-Use `adding-a-feature` for functional parity and `frontend-design` for a user-facing screen. Keep feature guidance here; do not rewrite `README.md` or `DESIGN.md`. After all edits, run `pnpm test`, one typecheck and one doctor check.
-
-Before building common workspace or agent UI, read `agent-native-toolkit`; for supported customization, read `customizing-agent-native`.
-
-- Guarded verification: run `pnpm agent-native:doctor`; fix findings before done.
+After all edits run `pnpm test`, `pnpm typecheck` and `pnpm agent-native:doctor`; fix findings before done. Production builds use `NITRO_PRESET=vercel` (set in `vercel.json`); a plain `node` preset build misses nested dependencies such as `yjs` on Vercel.
 
 ## Spot Rules (this app)
 

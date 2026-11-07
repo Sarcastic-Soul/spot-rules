@@ -1,38 +1,43 @@
 # Visual Design Contract
 
-Chat is a quiet, full-canvas conversation workbench. AgentKit owns the
-conversation primitives; the template owns the surrounding navigation and
-workspace chrome.
+Spot Rules looks like a field notebook: warm paper, dark ink, one burnt-orange accent. The verdict is the loudest thing on screen.
 
 ## Product mode
 
 - Mode: `operate`
-- Audience and cadence: frequent users managing many ongoing agent threads.
-- Primary workflow: begin, resume, pin, and organize conversations without
-  leaving the chat canvas.
+- Audience and cadence: one person with a few regular outdoor spots, checking each morning or before a trip.
+- Primary workflow: open a spot, see the next 7 days at a glance, tap a day for reasons, correct a wrong call.
 
 ## Visual direction
 
-- Direction name: Quiet conversation library
-- Palette family: neutral ink and semantic surfaces; active rows use the
-  existing sidebar accent rather than a separate branded color.
-- Type treatment: dense sans-serif labels with regular-weight conversation
-  titles and restrained section labels.
-- Composition: a persistent conversation library beside a generous chat
-  canvas. New chat is the primary rail action, followed by Pinned and Recents.
-  Account, workspace, settings, and sign-out controls disclose from one footer
-  row instead of competing in the rail.
-- Shape language: borderless lists, soft selected rows, quiet corners, and
-  compact icon controls.
-- Anti-references: icon-only navigation as the default state, floating chips,
-  duplicated settings links, timestamps competing with thread titles, and
-  placeholder destinations that the app does not implement.
+- Direction name: Field notebook
+- Palette: paper `hsl(40 38% 93%)`, ink `hsl(33 20% 11%)`, one accent `--signal` `hsl(16 71% 41%)`. No gradients and no second accent colour.
+- Type: Fraunces (display, rule quotes and headings), Manrope (body), IBM Plex Mono (numbers, units and dates).
+- Shape: square corners (`--radius: 0.125rem`), hairline borders, flat surfaces, no shadows for depth.
+- Icons: Phosphor only.
+- Motion: short fades and rises (180 ms), a staggered entrance on the 7-day strip, a brief highlight on days a new rule changed. All of it stops under `prefers-reduced-motion`.
 
-## Guardrails
+## Verdicts never depend on colour
 
-- Preserve the scaffold's semantic tokens and shared component seams.
-- Keep domain pages distinct from full-page chat and use the AgentSidebar for
-  contextual AI.
-- Compare sibling apps before reusing their palette or composition.
-- Keep pinning, rename, archive, and routing wired to the shared chat thread
-  model; the sidebar is a presentation layer, not a second history store.
+| Verdict | Fill | Extra cue |
+|---|---|---|
+| GO | solid accent | check mark |
+| MAYBE | diagonal hatch | italic label |
+| NO | muted grey | strikethrough |
+| SKIP / UNKNOWN | empty | muted text |
+
+The same cell styles are used in the list strip, the detail strip, the 30-day calendar and the map pins (`.cell-GO`, `.cell-MAYBE`, `.cell-NO` in `app/global.css`).
+
+## Layout
+
+- Spot page: tabs and the 7-day strip come first, above the rule, on desktop and phone. The rule shows as a large italic quote with editable chips below the strip. An open draft stays prominent above both.
+- List page: map beside the spot list; each spot carries its own 7-day strip.
+- The agent panel and the spots screens share one palette, so the chat feels like part of the same product.
+
+## Voice
+
+Plain and direct. Say what happened and what the user can do: "not live until you approve", "drafted by agent, approved by you", "Rule v3 live: 2 past days and 1 upcoming day changed". Write numbers and units as plain text, such as "gusts under 35 km/h".
+
+## Anti-references
+
+Weather-app blue skies, purple or blue gradients, gradient text, emoji, Lucide icons, card grids of equal tiles, and colour as the only signal for a verdict.

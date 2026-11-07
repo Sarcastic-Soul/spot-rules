@@ -1,11 +1,10 @@
 {
   "name": "spot-rules",
-  "displayName": "Agent Native App",
+  "displayName": "Spot Rules",
   "private": true,
-  "description": "Workspace app for Agent Native App.",
+  "description": "Pin outdoor spots, say what a good day looks like, and get GO / MAYBE / NO from plain code.",
   "type": "module",
   "scripts": {
-    "migrate:production": "tsx scripts/migrate-production.ts",
     "dev": "agent-native dev --open",
     "build": "agent-native build",
     "start": "agent-native start",

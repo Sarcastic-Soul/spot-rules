@@ -1,29 +1,26 @@
 # Changelog
 
-All notable user-facing changes to this app are documented here.
+User-facing changes to Spot Rules.
 
-## 2026-10-10
+## 2026-11-07
 
-### Fixed
+### Added
 
-- Large prompts with full context remain available to retry when sending fails.
-
-## 2026-09-30
+- Starter rule templates for cycling, running, hiking, kite surfing, photography and laundry. A new spot gets a draft without waiting for the agent.
+- Every rule draft now shows a feedback check: which of your earlier notes it fixes, keeps or breaks.
+- Rule history shows what changed in each version and the note that led to it.
+- "Jump to a GO day" in the replay bar, inline spot rename, and a "next GO" label on map pins.
+- `compare-spots` for the agent: "where should I ride Saturday?"
 
 ### Improved
 
-- Chat uses a compact + menu with context submenus, keeps task, automation, and skill actions at the root, and omits Generate Image.
+- The 7-day strip and tabs sit above the rule on the spot page, on desktop and mobile.
+- Approving a rule says how many past and upcoming days changed.
+- The morning check says when a spot's window has already passed today, and says so if the inbox post fails.
+- The weather cache holds 70 past days, so replay and the 30-day backtest no longer go blank.
 
-## 2026-09-27
+## 2026-11-06
 
-### Fixed
+### Added
 
-- Chat retries the original request with its attachments after model setup.
-
-## 2026-08-27
-
-### Fixed
-
-- Chat includes the runtime packages needed for provider keys after deployment.
-
-For the full list of updates, see the [changelog folder](./changelog/).
+- First release: map and spot list, plain-English rules, the GO / MAYBE / NO evaluator, 7-day strip, 30-day backtest, feedback with rule diffs, rule history, morning check and replay mode.

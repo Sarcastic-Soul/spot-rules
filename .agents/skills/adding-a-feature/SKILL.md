@@ -185,7 +185,7 @@ Templates are single-page apps with client-side routing. The app shell (AgentSid
 - If the template has `app/routes/_app.tsx` (pathless layout) — name your new route `_app.<segment>.tsx` to inherit the shell, or bare `<segment>.tsx` for public routes that should NOT have the shell.
 - If a page needs per-route data (e.g. highlighting the active item in the sidebar), read it in the layout from `useParams()` / `useLocation()`. Don't pass it as a prop through every route file.
 
-See the "Client-Side Routing" section in the root `CLAUDE.md` for full details.
+See `.agents/skills/client-side-routing/SKILL.md` for full details.
 
 ## Anti-Patterns
 

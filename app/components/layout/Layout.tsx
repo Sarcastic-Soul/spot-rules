@@ -48,7 +48,6 @@ function routeOwnsToolbar(pathname: string): boolean {
   return (
     pathname === HOME_PATH ||
     isChatPathname(pathname) ||
-    pathname === "/database" ||
     pathname.startsWith("/extensions")
   );
 }

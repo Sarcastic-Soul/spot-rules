@@ -1,8 +1,9 @@
 # Spot Rules: Product Spec
 
-Status: v1 plan, written 2026-11-06 before the build. After the build, compare
-the app against this file: tick what shipped, note what changed, and use the
-"Later" list to decide what to add next.
+Status: v1 shipped and live at https://spot-rules.vercel.app (2026-11-07). The
+plan was written 2026-11-06 before the build. Section 10 ticks only what was
+checked, section 11 lists what changed during the build, and the "Later" list
+is the next step.
 
 ## 1. Problem
 
@@ -150,7 +151,7 @@ Rules the build follows:
 |---|---|
 | `spots` | id, owner, name, lat, lon, timezone, activity, created_at |
 | `rules` | id, spot_id, version, window, days, conditions (jsonb), source_text, status (`active`/`draft`/`archived`), created_by (`user`/`agent`), reason, created_at |
-| `weather_cache` | spot_id, timezone, hourly (jsonb, 45 past days + 8 forecast days), fetched_at |
+| `weather_cache` | spot_id, timezone, hourly (jsonb, 70 past days + 8 forecast days), fetched_at |
 | `feedback` | id, spot_id, date, rule_version, user_says (`GO`/`MAYBE`/`NO`), reason_text, verdict (jsonb, the day's verdict and per-condition values), status, resolved_by_version |
 | `spot_user_settings` | owner, replay_date (nullable) |
 
@@ -172,7 +173,8 @@ read, so they always match the live rule.
 | `give-feedback` | UI, agent | no |
 | `morning-check` | automation, "Run now" | no |
 | `set-replay-date` | UI, agent | no |
-| `navigate` / `view-screen` | agent (template) | no |
+| `compare-spots` | agent (rank every spot for one day) | no |
+| `navigate` / `view-screen` | agent; `navigate` takes `spotId`, `tab`, `day`; `view-screen` returns the open spot, draft, selected day and open feedback | no |
 
 ### Agent skill
 
@@ -219,10 +221,14 @@ change".
       inbox notification. ("Run now" works live and shows a summary toast. The
       scheduled run and the inbox entry were not checked.)
 - [ ] The agent can do every UI action, and the UI can do every agent action.
-- [x] Evaluator unit tests pass; `pnpm build` passes. (42 tests in 3 files,
+- [x] Evaluator unit tests pass; `pnpm build` passes. (93 tests in 6 files,
       typecheck, doctor and build all exit 0 on 2026-11-07.)
 - [x] Live on Vercel with Neon. (https://spot-rules.vercel.app: sign-in, spot
-      list, spot detail and map load, actions return data.)
+      list, spot detail and map load, actions return data. Pushes to `main`
+      deploy through `vercel.json`.)
+- [x] Draft card shows the feedback check, approving shows "Rule v3 live: 2
+      past days and 1 upcoming day changed", and history shows the note behind
+      each version. (Run in a browser against a local build on 2026-11-07.)
 - [ ] Replay mode works on the live app. (The control is there; not exercised.)
 
 ## 11. Changes during the build
@@ -246,7 +252,14 @@ change".
   rule history with diffs and the note behind each version, weather cache
   widened to 70 past days so replay and backtest no longer go blank, and a real
   `view-screen`.
-- Not built: S3 sunrise windows, S4 share a rule.
+- Deploys: Vercel's own Git build used the plain `node` Nitro preset and
+  crashed at start (`Cannot find package 'yjs'`). `vercel.json` now builds with
+  `NITRO_PRESET=vercel` and a daily cron, which fixed it.
+- Cleanup: removed template leftovers (Netlify config, migration script,
+  database and observability screens, Slack provider action, unused UI
+  wrappers, template changelog and dev guide). README, DESIGN, CHANGELOG and the
+  web manifest now describe Spot Rules.
+- Not built: S3 sunrise windows, S4 share a rule, a screen for compare-spots.
 
 ## 12. Pre-existing work used
 
