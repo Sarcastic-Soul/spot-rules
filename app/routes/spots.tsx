@@ -1,4 +1,4 @@
-import { sendToAgentChat } from "@agent-native/core/client/agent-chat";
+import { sendToAgent } from "@/lib/ask-agent";
 import { callAction, useActionMutation, useActionQuery } from "@agent-native/core/client/hooks";
 import { ArrowsClockwise, CalendarCheck, ClockCounterClockwise, SunHorizon } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
@@ -90,11 +90,11 @@ export default function SpotsLayout() {
         action: {
           label: "Run daily",
           onClick: () =>
-            sendToAgentChat({
-              message: "Run the morning check for me every day at 6 am.",
-              context:
-                "Spot Rules. Create a scheduled automation with manage-automations: schedule '0 6 * * *', instructions 'Run morning-check'. Confirm the next run time.",
-              submit: true,
+            void sendToAgent(
+              "Run the morning check for me every day at 6 am.",
+              "Spot Rules. Create a scheduled automation with manage-automations: schedule '0 6 * * *', instructions 'Run morning-check'. Confirm the next run time.",
+            ).then((ok) => {
+              if (!ok) toast.error("Couldn't reach the agent. Try again.");
             }),
         },
       });

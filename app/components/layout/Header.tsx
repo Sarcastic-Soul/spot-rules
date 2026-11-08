@@ -3,6 +3,7 @@ import {
   useHeaderActions,
 } from "@agent-native/toolkit/app-shell";
 import { AgentToggleButton } from "@agent-native/toolkit/app/chat";
+import { NotificationsBell } from "@agent-native/toolkit/app/notifications";
 
 import { MobileAppBar } from "./MobileAppBar";
 
@@ -22,6 +23,10 @@ export function Header({ onOpenMobileSidebar }: HeaderProps) {
       actions={
         <>
           {actions}
+          <NotificationsBell
+            emptyTitle="No updates yet"
+            emptyDescription="Run the morning check to get a summary of your spots here."
+          />
           <AgentToggleButton />
         </>
       }

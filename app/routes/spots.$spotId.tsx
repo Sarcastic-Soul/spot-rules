@@ -1,4 +1,3 @@
-import { sendToAgentChat } from "@agent-native/core/client/agent-chat";
 import { useActionMutation, useActionQuery } from "@agent-native/core/client/hooks";
 import { suggestTemplateKey, TEMPLATES } from "@shared/templates";
 import {
@@ -21,6 +20,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
 
 import { btn, field } from "@/components/spots/context";
+import { sendToAgent } from "@/lib/ask-agent";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -457,15 +457,12 @@ function RuleChips({ d }: { d: SpotDetail }) {
   );
 }
 
-function askAgent(message: string, context: string, sent = "Sent to the agent") {
-  try {
-    sendToAgentChat({ message, context, submit: true });
-    toast.success(sent);
-    return true;
-  } catch {
-    toast.error("Couldn't reach the agent. Your text is still here, try again.");
-    return false;
-  }
+async function askAgent(message: string, context: string, sent = "Sent to the agent") {
+  const id = toast.loading("Sending to the agent…");
+  const ok = await sendToAgent(message, context);
+  if (ok) toast.success(sent, { id });
+  else toast.error("Couldn't reach the agent. Your text is still here, try again.", { id });
+  return ok;
 }
 
 function feedbackMessage(d: SpotDetail, date: string, appSaid: string, userSays: string, reason: string) {
@@ -485,15 +482,14 @@ function ChangeInWords({ d, draftId, autoFocus }: { d: SpotDetail; draftId?: str
       onSubmit={(e) => {
         e.preventDefault();
         if (text.trim().length < 3) return;
-        const sent = askAgent(
+        void askAgent(
           draftId
             ? `Change this draft for ${d.spot.name}: ${text.trim()}`
             : `Change the rule for ${d.spot.name}: ${text.trim()}`,
           draftId
             ? `Spot Rules. spotId=${d.spot.id}. draftId=${draftId}. Revise the draft with propose-rule; keep everything the user did not mention.`
             : `Spot Rules. spotId=${d.spot.id}. Active rule v${d.activeRule?.version}. Use propose-rule to save a draft with the smallest change; do not decide verdicts yourself.`,
-        );
-        if (sent) setText("");
+        ).then((sent) => sent && setText(""));
       }}
     >
       <label htmlFor={id} className="sr-only">
@@ -568,11 +564,10 @@ function AskForRule({ d }: { d: SpotDetail }) {
       onSubmit={(e) => {
         e.preventDefault();
         if (text.trim().length < 5) return;
-        const sent = askAgent(
+        void askAgent(
           `Make a rule for ${d.spot.name} (${d.spot.activity}): ${text.trim()}`,
           `Spot Rules. spotId=${d.spot.id}. No rule yet. Turn the user's words into a typed rule with propose-rule; keep the user's words as sourceText.`,
-        );
-        if (sent) setText("");
+        ).then((sent) => sent && setText(""));
       }}
     >
       <h3 className="font-display text-xl font-semibold">What does a good day look like here?</h3>
@@ -984,15 +979,16 @@ function DayDetail({ d, v, onClose, past }: { d: SpotDetail; v: DayVerdict; onCl
   }, []);
   const give = useActionMutation<{ feedbackId: string; appSaid: string }>("give-feedback", {
     onSuccess: (r, vars: any) => {
-      const sent = askAgent(
+      void askAgent(
         feedbackMessage(d, v.date, r.appSaid, vars.userSays, vars.reason),
         feedbackContext(d, r.feedbackId),
         "Noted. Sent to the agent for a fix",
-      );
-      if (sent) {
-        setSays(null);
-        setReason("");
-      }
+      ).then((sent) => {
+        if (sent) {
+          setSays(null);
+          setReason("");
+        }
+      });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -1039,7 +1035,7 @@ function DayDetail({ d, v, onClose, past }: { d: SpotDetail; v: DayVerdict; onCl
                 type="button"
                 className={`${btn.line} mt-2`}
                 onClick={() =>
-                  askAgent(
+                  void askAgent(
                     feedbackMessage(d, v.date, existing.verdict?.result ?? v.result, existing.userSays, existing.reasonText),
                     feedbackContext(d, existing.id),
                     "Sent to the agent again",
