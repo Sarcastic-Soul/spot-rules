@@ -42,7 +42,7 @@ describe("fetchHourly", () => {
     expect(url.searchParams.get("past_days")).toBe("35");
     expect(url.searchParams.get("forecast_days")).toBe("8");
     expect(url.searchParams.get("hourly")).toBe(
-      "temperature_2m,apparent_temperature,precipitation,precipitation_probability,wind_speed_10m,wind_gusts_10m,cloud_cover,relative_humidity_2m,uv_index,visibility",
+      "temperature_2m,apparent_temperature,precipitation,precipitation_probability,wind_speed_10m,wind_gusts_10m,cloud_cover,relative_humidity_2m,uv_index,visibility,is_day",
     );
     expect(r.timezone).toBe("Asia/Kolkata");
     expect(r.utcOffsetSeconds).toBe(19800);

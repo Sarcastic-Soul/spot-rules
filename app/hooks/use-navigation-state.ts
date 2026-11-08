@@ -21,6 +21,7 @@ export interface NavigationState {
   spotId?: string;
   day?: string;
   tab?: string;
+  compareDate?: string;
 }
 
 export function useNavigationState() {
@@ -83,6 +84,7 @@ export function navigationStateForPath(
     ...(spotMatch ? { spotId: decodeURIComponent(spotMatch[1] ?? "") } : {}),
     ...(spotMatch && tab ? { tab } : {}),
     ...(spotMatch && day ? { day } : {}),
+    ...(pathname === "/spots" && params.get("compare") ? { compareDate: params.get("compare")! } : {}),
   };
 }
 

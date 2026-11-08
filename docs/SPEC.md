@@ -259,7 +259,11 @@ change".
   database and observability screens, Slack provider action, unused UI
   wrappers, template changelog and dev guide). README, DESIGN, CHANGELOG and the
   web manifest now describe Spot Rules.
-- Not built: S3 sunrise windows, S4 share a rule, a screen for compare-spots.
+- Nov 8: "Where to go" panel on `/spots` (the screen for compare-spots, S1),
+  sunrise/sunset windows (S3, `window.anchor` from Open-Meteo `is_day`, used by
+  the photography template), public share links (S4, `share-rule` +
+  `/r/<token>`, token-only, no coordinates), notification bell, and agent
+  sends that wait for the chat to confirm before clearing the input.
 
 ## 12. Pre-existing work used
 

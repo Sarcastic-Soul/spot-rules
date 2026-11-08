@@ -14,7 +14,10 @@ Built for the Builder.io Agent-Native Hackathon on [`@agent-native/core`](https:
 4. **Plain code decides.** `shared/evaluate.ts` checks each condition against Open-Meteo data. The model never says GO or NO. Every verdict lists which conditions passed and by how much.
 5. **Backtest.** See how the rule would have called the last 30 days.
 6. **Correct it.** Tap a day, say why it is wrong, and the agent proposes a diff. The draft shows which days change and which of your earlier notes it fixes or breaks.
-7. **Morning check.** One action refreshes every spot and posts a summary to the notification inbox. Schedule it from the agent.
+7. **Compare spots.** "Where to go" ranks your spots for any day of the week, best first, by plain code.
+8. **Share a rule.** One click copies a public read-only link with the rule and its next 7 calls (no coordinates). Revoke from the agent.
+9. **Follow the sun.** Rules can track sunrise or sunset ("golden hour"), so the window moves each day.
+10. **Morning check.** One action refreshes every spot and posts a summary to the notification inbox. Schedule it from the agent.
 
 Replay mode freezes "today" to a past date on cached real weather, so a demo gives the same result every time.
 
@@ -36,7 +39,7 @@ Every feature has four parts: a screen, an action, an entry in `AGENTS.md` and t
 - Drizzle ORM: PGlite locally, Neon Postgres in production
 - Google Gemini through the AI SDK
 - Open-Meteo for forecasts, past weather and place search (no key)
-- Vitest: 93 tests for the evaluator, rule schema, templates, feedback check, weather cache and Open-Meteo client
+- Vitest: 98 tests for the evaluator, rule schema, templates, feedback check, weather cache and Open-Meteo client
 - Vercel for hosting, with a daily cron for scheduled jobs
 
 ## Run it locally

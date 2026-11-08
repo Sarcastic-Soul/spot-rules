@@ -1,7 +1,7 @@
 import { useActionMutation, useActionQuery } from "@agent-native/core/client/hooks";
-import { MagnifyingGlass, MapPin, Plus, X } from "@phosphor-icons/react";
+import { MagnifyingGlass, MapPin, Plus, Trophy, X } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 
 import { btn, field, useSpotsContext } from "@/components/spots/context";
@@ -32,9 +32,11 @@ export default function SpotsIndex() {
   }, [pendingPin]);
 
   const spots = list.data?.spots ?? [];
+  const ruled = spots.filter((s) => s.week);
 
   return (
     <div>
+      {ruled.length >= 2 && <CompareDay days={ruled[0]!.week!.map((d) => d.date)} />}
       <div className="flex items-center px-5 pb-2 pt-4">
         <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">Your spots</h2>
         {spots[0]?.week && (
@@ -109,6 +111,96 @@ export default function SpotsIndex() {
         </button>
       )}
     </div>
+  );
+}
+
+type Comparison = {
+  date: string | null;
+  ranking: {
+    spotId: string;
+    name: string;
+    activity: string;
+    result: string;
+    bestStart: string | null;
+    bestEnd: string | null;
+    reason: string;
+  }[];
+  noRule: { spotId: string; name: string }[];
+  unavailable: { spotId: string; name: string }[];
+};
+
+/** "Where should I go on <day>?" — the UI side of the compare-spots action. */
+function CompareDay({ days }: { days: string[] }) {
+  // Kept in the URL so the navigation state tells the agent which day is compared.
+  const [params, setParams] = useSearchParams();
+  const date = params.get("compare") ?? "";
+  const picked = days.includes(date) ? date : (days[1] ?? days[0]!);
+  const setDate = (d: string) => {
+    const next = new URLSearchParams(params);
+    next.set("compare", d);
+    setParams(next, { replace: true });
+  };
+  const q = useActionQuery<Comparison>("compare-spots", { date: picked });
+  const top = q.data?.ranking[0];
+  return (
+    <section aria-labelledby="compare-h" className="border-b border-foreground px-5 pb-4 pt-4">
+      <div className="flex items-center gap-2">
+        <Trophy size={16} aria-hidden />
+        <h2 id="compare-h" className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          Where to go
+        </h2>
+      </div>
+      <div role="radiogroup" aria-label="Day to compare" className="mt-2 grid grid-cols-7 gap-[3px]">
+        {days.map((d) => (
+          <button
+            key={d}
+            type="button"
+            role="radio"
+            aria-checked={d === picked}
+            onClick={() => setDate(d)}
+            className={`min-h-9 border font-plex text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              d === picked ? "border-foreground bg-foreground text-background" : "border-border hover:bg-muted"
+            }`}
+          >
+            {dayLabel(d)}
+          </button>
+        ))}
+      </div>
+      {q.isLoading ? (
+        <Skeleton className="mt-3 h-16 w-full rounded-none" />
+      ) : q.error ? (
+        <p className="mt-3 text-sm text-destructive">Could not compare: {(q.error as Error).message}</p>
+      ) : (
+        <ol className="mt-3 space-y-1" aria-live="polite">
+          {q.data?.ranking.map((r, i) => (
+            <li key={r.spotId}>
+              <Link
+                to={`/spots/${r.spotId}?day=${picked}`}
+                className={`flex items-center gap-3 border px-3 py-2 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  i === 0 && r.result === "GO" ? "border-foreground" : "border-border"
+                }`}
+              >
+                <span className="w-4 font-plex text-xs text-muted-foreground">{i + 1}</span>
+                <span className={`cell-${r.result} w-14 border border-foreground/25 py-0.5 text-center font-display text-sm font-bold`}>
+                  {r.result}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold">{r.name}</span>
+                  <span className="block truncate text-[12px] text-muted-foreground">
+                    {r.reason}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ol>
+      )}
+      {top && (
+        <p className="mt-2 text-[12px] text-muted-foreground">
+          {top.result === "GO" ? `${top.name} has the most room to spare.` : "No spot is a clear GO that day."} Ranked by plain code, not the model.
+        </p>
+      )}
+    </section>
   );
 }
 

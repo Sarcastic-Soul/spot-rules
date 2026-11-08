@@ -217,8 +217,10 @@ export async function loadWeather(
   const maxAge = (opts.maxAgeMinutes ?? WEATHER_MAX_AGE_MINUTES) * 60_000;
   const fresh =
     cached && Date.now() - Date.parse(cached.fetchedAt) < maxAge;
+  // Caches from before sunrise/sunset windows lack is_day; refetch them once.
   const covers =
     cached &&
+    Array.isArray(cached.hourly.is_day) &&
     coversPastDays(
       cached.hourly,
       pastDaysNeeded(Boolean(opts.replay)),

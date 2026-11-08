@@ -189,6 +189,49 @@ function strip(r: Evaluated): ConditionResult {
   return rest;
 }
 
+/**
+ * Local hour of sunrise (first daylight hour) or sunset (hour after the last
+ * daylight hour) on `date`, from Open-Meteo's hourly is_day flag. Null when
+ * the data has no is_day or the sun never rises or sets that day.
+ */
+export function sunHour(
+  weather: HourlyWeather,
+  date: string,
+  event: "sunrise" | "sunset",
+  index?: Map<string, number>,
+): number | null {
+  const flags = weather.is_day;
+  if (!flags) return null;
+  const hours: (number | null)[] = [];
+  for (let h = 0; h < 24; h++) {
+    const i = index ? index.get(timeKey(date, h)) : weather.time.indexOf(timeKey(date, h));
+    hours.push(i === undefined || i < 0 ? null : (flags[i] ?? null));
+  }
+  if (hours.some((v) => v === null)) return null;
+  const first = hours.indexOf(1);
+  const last = hours.lastIndexOf(1);
+  if (first <= 0 && last === 23) return null; // sun up all day (or from midnight)
+  if (first === -1) return null; // polar night
+  return event === "sunrise" ? first : last + 1;
+}
+
+/** Clock hours for the day's window: fixed hours, or offsets from sunrise/sunset when anchored. */
+export function resolveWindow(
+  window: RuleBody["window"],
+  weather: HourlyWeather,
+  index: Map<string, number> | undefined,
+  date: string,
+): { startHour: number; endHour: number; sun: number | null } {
+  if (!window.anchor) return { startHour: window.startHour, endHour: window.endHour, sun: null };
+  const sun = sunHour(weather, date, window.anchor.to, index);
+  if (sun === null) return { startHour: window.startHour, endHour: window.endHour, sun: null };
+  return {
+    startHour: Math.max(0, sun + window.anchor.startOffset),
+    endHour: Math.min(24, sun + window.anchor.endOffset),
+    sun,
+  };
+}
+
 export function evaluateDay(
   rule: RuleBody,
   weather: HourlyWeather,
@@ -209,7 +252,8 @@ export function evaluateDay(
   const index = new Map<string, number>();
   weather.time.forEach((t, i) => index.set(t, i));
 
-  const { startHour, endHour, minHours } = rule.window;
+  const { startHour, endHour } = resolveWindow(rule.window, weather, index, date);
+  const { minHours } = rule.window;
   let best: Run | null = null;
   for (let h = startHour; h <= endHour - minHours; h++) {
     const run = evaluateRun(rule, weather, index, date, h);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { addDays, evaluateDay, evaluateRange, formatCondition } from "./evaluate";
-import { METRICS, type Condition, type HourlyWeather, type Metric, type RuleBody } from "./rules";
+import { addDays, evaluateDay, evaluateRange, formatCondition, resolveWindow, sunHour } from "./evaluate";
+import { METRICS, ruleBodySchema, type Condition, type HourlyWeather, type Metric, type RuleBody } from "./rules";
 
 // 2026-06-01 is a Monday.
 const D0 = "2026-06-01";
@@ -285,5 +285,61 @@ describe("evaluateRange", () => {
     expect(out.map((v) => v.date)).toEqual([D0, D1, "2026-06-03"]);
     expect(out.every((v) => v.result === "GO")).toBe(true);
     expect(evaluateRange(rule, makeWeather(), D0, 0)).toEqual([]);
+  });
+});
+
+describe("sunrise / sunset windows", () => {
+  /** Sun up from `rise` (inclusive) to `set` (exclusive) local hour on each day. */
+  function withSun(w: HourlyWeather, rise: number, set: number): HourlyWeather {
+    return { ...w, is_day: w.time.map((t) => { const h = Number(t.slice(11, 13)); return h >= rise && h < set ? 1 : 0; }) };
+  }
+
+  it("finds sunrise and sunset hours from is_day", () => {
+    const w = withSun(makeWeather(), 6, 18);
+    expect(sunHour(w, D0, "sunrise")).toBe(6);
+    expect(sunHour(w, D0, "sunset")).toBe(18);
+    expect(sunHour(makeWeather(), D0, "sunrise")).toBeNull();
+  });
+
+  it("moves the window with sunrise", () => {
+    const rule: RuleBody = {
+      window: { startHour: 5, endHour: 8, minHours: 2, anchor: { to: "sunrise", startOffset: -1, endOffset: 2 } },
+      conditions: [cond({ id: "c1", metric: "wind_speed", op: "<", value: 25 })],
+    };
+    // Sunrise 7: window 06–09. Wind is only calm 07–09.
+    const w = withSun(makeWeather((_d, h) => ({ wind_speed: h >= 7 && h < 9 ? 5 : 40 })), 7, 18);
+    const v = evaluateDay(rule, w, D0);
+    expect(v.result).toBe("GO");
+    expect(v.bestStart).toBe("07:00");
+    expect(v.bestEnd).toBe("09:00");
+    expect(resolveWindow(rule.window, w, undefined, D0)).toEqual({ startHour: 6, endHour: 9, sun: 7 });
+  });
+
+  it("supports golden hour before sunset", () => {
+    const rule: RuleBody = {
+      window: { startHour: 16, endHour: 19, minHours: 1, anchor: { to: "sunset", startOffset: -1, endOffset: 0 } },
+      conditions: [cond({ id: "c1", metric: "cloud_cover", op: "<=", value: 70 })],
+    };
+    const w = withSun(makeWeather((_d, h) => ({ cloud_cover: h === 17 ? 30 : 95 })), 6, 18);
+    const v = evaluateDay(rule, w, D0);
+    expect(v.result).toBe("GO");
+    expect(v.bestStart).toBe("17:00");
+  });
+
+  it("falls back to the clock hours when is_day is missing", () => {
+    const rule: RuleBody = {
+      window: { startHour: 6, endHour: 9, minHours: 2, anchor: { to: "sunrise", startOffset: 0, endOffset: 3 } },
+      conditions: [cond({ id: "c1", metric: "wind_speed", op: "<", value: 25 })],
+    };
+    const v = evaluateDay(rule, makeWeather(), D0);
+    expect(v.bestStart).toBe("06:00");
+  });
+
+  it("rejects an anchor too short for the activity", () => {
+    const r = ruleBodySchema.safeParse({
+      window: { startHour: 5, endHour: 9, minHours: 3, anchor: { to: "sunrise", startOffset: 0, endOffset: 2 } },
+      conditions: [cond({ id: "c1", metric: "wind_speed", op: "<", value: 25 })],
+    });
+    expect(r.success).toBe(false);
   });
 });

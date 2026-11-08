@@ -180,6 +180,16 @@ export default function Root() {
   // The path, not the visitor, picks the shell, so the SSR shell stays one
   // cached page per URL.
   const { pathname } = useLocation();
+  // Shared rule links (/r/<token>) are public: no sign-in, no app chrome.
+  if (pathname.startsWith("/r/")) {
+    return (
+      <AppToolkitProvider>
+        <AppProviders queryClient={queryClient} isPublicPath i18n={{ catalog: i18nCatalog }}>
+          <Outlet />
+        </AppProviders>
+      </AppToolkitProvider>
+    );
+  }
   return (
     <AppToolkitProvider>
       <AppProviders

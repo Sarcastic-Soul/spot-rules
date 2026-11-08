@@ -28,6 +28,10 @@ export function shortWindow(v: Pick<DayVerdict, "bestStart" | "bestEnd">) {
 export function windowText(body: RuleBody) {
   const w = body.window;
   const pad = (n: number) => String(n).padStart(2, "0");
+  if (w.anchor) {
+    const off = (n: number) => (n === 0 ? w.anchor!.to : `${w.anchor!.to} ${n > 0 ? "+" : "−"}${Math.abs(n)}h`);
+    return `${off(w.anchor.startOffset)} to ${off(w.anchor.endOffset)}, ${w.minHours} h`;
+  }
   return `${pad(w.startHour)}–${pad(w.endHour)}, ${w.minHours} h`;
 }
 

@@ -35,8 +35,10 @@ Spot Rules: users pin outdoor spots and describe a good day in plain English. Th
 - Screens: `/spots` (list + map), `/spots/:id?tab=next|past|history&day=YYYY-MM-DD`. Navigation state carries `view: "spots"`, `spotId`, `tab`, `day`.
 - Rule changes always go through `propose-rule` (saves a draft and returns its effect, including `feedbackCheck`). Users approve in the UI; call `decide-rule-draft` only when the user clearly says approve. `edit-rule` is UI-only (chip edits); the agent never calls it.
 - Wrong call: `give-feedback` (UI usually did this and passes `feedbackId`), then `propose-rule` with the smallest change plus `feedbackId`. Report changed days from the preview.
-- Reading: `list-spots`, `get-spot`, `backtest-rule`, `compare-spots` (rank spots for one day), `view-screen` (what the user sees, including the open draft and selected day). `navigate` takes `spotId`, `tab`, `day`.
+- Reading: `list-spots`, `get-spot`, `backtest-rule`, `compare-spots` (rank spots for one day; the "Where to go" panel on `/spots` shows the same ranking and puts the picked day in navigation as `compareDate`), `view-screen` (what the user sees, including the open draft and selected day). `navigate` takes `spotId`, `tab`, `day`.
 - Spot management: `create-spot`, `update-spot`, `delete-spot` (needs approval), `search-places`, `refresh-weather`.
+- Sharing: `share-rule` makes a public read-only link `/r/<token>` (rule + next 7 calls, no coordinates; needs approval); `revoke: true` turns the spot's links off. The page reads `server/routes/api/public/rules/[token].get.ts`, listed in `publicPaths` in `server/plugins/auth.ts`.
+- Sunrise/sunset: a rule window can carry `anchor: { to: "sunrise"|"sunset", startOffset, endOffset }`; the evaluator moves the window each day from Open-Meteo's `is_day` hours.
 - Replay: `set-replay-date` freezes "today" on cached real weather for demos.
 - Daily summary: `morning-check`. To schedule it, create an automation with `manage-automations` (e.g. cron `0 6 * * *`, instructions "Run morning-check").
 - Rule schema, examples and pitfalls: `.agents/skills/spot-rules/SKILL.md`.

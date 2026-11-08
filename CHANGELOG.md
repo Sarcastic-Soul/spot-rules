@@ -2,6 +2,19 @@
 
 User-facing changes to Spot Rules.
 
+## 2026-11-08
+
+### Added
+
+- "Where to go" on the spots page: pick a day and see your spots ranked best first.
+- Share a rule: one click copies a public read-only link with the rule and its next 7 calls. Coordinates stay private.
+- Rules can follow sunrise or sunset. The photography template now uses golden hour.
+- A notification bell in the header for morning check summaries.
+
+### Improved
+
+- Messages to the agent wait until the chat confirms them before your text is cleared.
+
 ## 2026-11-07
 
 ### Added

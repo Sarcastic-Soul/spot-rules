@@ -1,3 +1,4 @@
+import { appPath } from "@agent-native/core/client/api-path";
 import { useActionMutation, useActionQuery } from "@agent-native/core/client/hooks";
 import { suggestTemplateKey, TEMPLATES } from "@shared/templates";
 import {
@@ -7,6 +8,7 @@ import {
   CaretUp,
   ChatCircleText,
   Check,
+  LinkSimple,
   PencilSimple,
   Robot,
   Trash,
@@ -223,6 +225,19 @@ function SpotHeader({ d }: { d: SpotDetail }) {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+  const share = useActionMutation<{ path: string | null }>("share-rule", {
+    onSuccess: async (r) => {
+      if (!r.path) return;
+      const url = new URL(appPath(r.path), window.location.origin).toString();
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success("Share link copied", { description: url });
+      } catch {
+        toast.success("Share link ready", { description: url, duration: 15000 });
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const fetched = new Date(d.weatherFetchedAt);
   return (
     <div className="px-5 pt-3">
@@ -239,6 +254,18 @@ function SpotHeader({ d }: { d: SpotDetail }) {
             <ArrowsClockwise size={15} className={refresh.isPending ? "animate-spin" : ""} />
             <span className="sr-only sm:not-sr-only">Refresh</span>
           </button>
+          {d.activeRule && (
+            <button
+              type="button"
+              className={btn.ghost}
+              disabled={share.isPending}
+              onClick={() => share.mutate({ spotId: d.spot.id })}
+              title="Copy a public read-only link to this rule"
+            >
+              <LinkSimple size={15} />
+              <span className="sr-only sm:not-sr-only">Share</span>
+            </button>
+          )}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <button type="button" className={btn.ghost} aria-label="Delete spot">

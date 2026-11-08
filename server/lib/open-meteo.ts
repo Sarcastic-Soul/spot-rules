@@ -62,7 +62,7 @@ export async function fetchHourly(
   const params = new URLSearchParams({
     latitude: String(lat),
     longitude: String(lon),
-    hourly: METRICS.map((m) => API_NAMES[m]).join(","),
+    hourly: [...METRICS.map((m) => API_NAMES[m]), "is_day"].join(","),
     timezone: "auto",
     wind_speed_unit: "kmh",
     past_days: String(pastDays),
@@ -83,6 +83,9 @@ export async function fetchHourly(
     hourly[m] = Array.isArray(arr)
       ? time.map((_, i) => (typeof arr[i] === "number" ? arr[i] : null))
       : time.map(() => null);
+  }
+  if (Array.isArray(h.is_day)) {
+    hourly.is_day = time.map((_, i) => (typeof h.is_day[i] === "number" ? h.is_day[i] : null));
   }
   return {
     timezone: String(data.timezone ?? "UTC"),

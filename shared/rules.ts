@@ -111,9 +111,27 @@ export const windowSchema = z
       .min(1)
       .max(24)
       .describe("How many hours the activity takes"),
+    anchor: z
+      .object({
+        to: z.enum(["sunrise", "sunset"]).describe("Sun event the window follows each day"),
+        startOffset: z.number().int().min(-6).max(6).describe("Earliest start, hours from the sun event (-1 = an hour before)"),
+        endOffset: z
+          .number()
+          .int()
+          .min(-5)
+          .max(12)
+          .describe("Hour the activity must be finished by, hours from the sun event (exclusive)"),
+      })
+      .optional()
+      .describe(
+        "Optional. Follow sunrise or sunset instead of fixed clock hours ('golden hour', 'start at first light'). When set, startHour/endHour are only the rough clock hours shown as a fallback; the evaluator uses the offsets each day.",
+      ),
   })
   .refine((w) => w.endHour - w.startHour >= w.minHours, {
     message: "endHour - startHour must be at least minHours",
+  })
+  .refine((w) => !w.anchor || w.anchor.endOffset - w.anchor.startOffset >= w.minHours, {
+    message: "anchor endOffset - startOffset must be at least minHours",
   });
 
 export type RuleWindow = z.infer<typeof windowSchema>;
@@ -133,6 +151,8 @@ export type RuleBody = z.infer<typeof ruleBodySchema>;
 export type HourlyWeather = {
   /** Local time strings "YYYY-MM-DDTHH:00" from Open-Meteo with timezone=auto */
   time: string[];
+  /** 1 when the sun is up that hour, 0 at night. Used for sunrise/sunset windows; older caches lack it. */
+  is_day?: (number | null)[];
 } & { [M in Metric]: (number | null)[] };
 
 export type Verdict = "GO" | "MAYBE" | "NO" | "SKIP" | "UNKNOWN";

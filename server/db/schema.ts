@@ -61,6 +61,18 @@ export const feedback = pgTable("feedback", {
   createdAt: text("created_at").notNull().default(sql`now()`),
 });
 
+/**
+ * Public read-only links to a spot's live rule. The random token is the only
+ * key; the public page shows the rule and its 7-day calls, never coordinates.
+ */
+export const ruleShares = pgTable("rule_shares", {
+  token: text("token").primaryKey(),
+  spotId: text("spot_id").notNull(),
+  ownerEmail: text("owner_email").notNull(),
+  createdAt: text("created_at").notNull().default(sql`now()`),
+  revokedAt: text("revoked_at"),
+});
+
 /** Per-user settings. replay_date freezes "today" to a past date. */
 export const userSettings = pgTable("spot_user_settings", {
   ownerEmail: text("owner_email").primaryKey(),

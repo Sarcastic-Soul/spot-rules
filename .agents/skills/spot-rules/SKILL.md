@@ -37,6 +37,13 @@ description: >-
 
 - `window`: local hours. The evaluator looks for the best run of `minHours`
   inside `startHour`..`endHour` (end is exclusive, max 24).
+- `window.anchor` (optional): follow the sun instead of the clock.
+  `{ "to": "sunrise", "startOffset": -1, "endOffset": 2 }` = from an hour
+  before sunrise to two hours after. Use it for "golden hour", "first light",
+  "before sunset". Offsets are whole hours from the sunrise hour (first
+  daylight hour) or sunset hour (first dark hour); `endOffset - startOffset`
+  must be at least `minHours`. Still fill startHour/endHour with rough clock
+  hours; they are the fallback when daylight data is missing.
 - `days`: optional weekday filter, 0 = Sunday. Other days show as SKIP.
 - Metrics: temperature, apparent_temperature (°C), precipitation (mm),
   precipitation_probability, cloud_cover, relative_humidity (%), wind_speed,
@@ -102,6 +109,9 @@ list the draft's verdict on every day the user gave feedback on:
 - `view-screen` returns the navigation state and, on a spot screen, the spot,
   active rule version, open draft with changed-day counts, the selected day's
   verdict with per-condition results, and open feedback.
+- `share-rule` makes a public read-only link (`path` like `/r/<token>`) to
+  the spot's live rule and next 7 calls. It needs approval. Give the user the
+  full URL. `revoke: true` turns every link for the spot off.
 - `set-replay-date` (`null` = live) for demos on past weather.
 - `morning-check` posts today's and tomorrow's calls to the inbox. To run it
   every day, create an automation with `manage-automations`

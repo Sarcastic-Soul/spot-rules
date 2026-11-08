@@ -73,9 +73,9 @@ export const TEMPLATES: RuleTemplate[] = [
     key: "photography",
     label: "Photography",
     sourceText:
-      "Good photo morning: 5 to 9 am for 2 hours, no rain, cloud cover between 20 and 70 percent for good light, visibility over 8 km, wind under 25 km/h.",
+      "Good photo morning: golden hour, from an hour before sunrise to two hours after, no rain, cloud cover between 20 and 70 percent for good light, visibility over 8 km, wind under 25 km/h.",
     body: {
-      window: { startHour: 5, endHour: 9, minHours: 2 },
+      window: { startHour: 5, endHour: 8, minHours: 2, anchor: { to: "sunrise", startOffset: -1, endOffset: 2 } },
       conditions: [
         { id: "c1", metric: "precipitation", op: "<=", value: 0.2, scope: { kind: "window" }, agg: "sum", severity: "hard", note: "no rain" },
         { id: "c2", metric: "cloud_cover", op: "between", value: [20, 70], scope: { kind: "window" }, agg: "avg", severity: "soft", note: "cloud cover between 20 and 70 percent" },

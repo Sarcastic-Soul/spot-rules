@@ -61,6 +61,18 @@ CREATE INDEX IF NOT EXISTS spots_owner_idx ON spots (owner_email, created_at);
 CREATE INDEX IF NOT EXISTS rules_spot_idx ON rules (spot_id, status);
 CREATE INDEX IF NOT EXISTS feedback_spot_idx ON feedback (spot_id, date)`,
     },
+    {
+      version: 2,
+      name: "rule-share-links",
+      sql: `CREATE TABLE IF NOT EXISTS rule_shares (
+  token TEXT PRIMARY KEY,
+  spot_id TEXT NOT NULL REFERENCES spots(id) ON DELETE CASCADE,
+  owner_email TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (now()),
+  revoked_at TEXT
+);
+CREATE INDEX IF NOT EXISTS rule_shares_spot_idx ON rule_shares (spot_id)`,
+    },
   ],
   { table: "spot_rules_migrations" },
 );
