@@ -1,4 +1,5 @@
 import { defineAction, fail } from "@agent-native/core/action";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { evaluateDay } from "../shared/evaluate.js";
@@ -30,8 +31,28 @@ export default defineAction({
     const verdict = evaluateDay(active.body, weather.hourly, args.date);
     if (verdict.result === "UNKNOWN")
       fail("No weather data for that date.", { errorCode: "no_data", statusCode: 409 });
-    const id = crypto.randomUUID();
-    await getDb().insert(schema.feedback).values({
+    // The UI records feedback before asking the agent; if the agent records it
+    // again, reuse the open note instead of saving a duplicate.
+    const [same] = await getDb()
+      .select({ id: schema.feedback.id })
+      .from(schema.feedback)
+      .where(
+        and(
+          eq(schema.feedback.spotId, spot.id),
+          eq(schema.feedback.ownerEmail, ownerEmail),
+          eq(schema.feedback.date, args.date),
+          eq(schema.feedback.userSays, args.userSays),
+          eq(schema.feedback.status, "open"),
+        ),
+      )
+      .limit(1);
+    const id = same?.id ?? crypto.randomUUID();
+    if (same) {
+      await getDb()
+        .update(schema.feedback)
+        .set({ reasonText: args.reason.trim(), verdict, ruleVersion: active.version ?? 0 })
+        .where(eq(schema.feedback.id, same.id));
+    } else await getDb().insert(schema.feedback).values({
       id,
       spotId: spot.id,
       date: args.date,
